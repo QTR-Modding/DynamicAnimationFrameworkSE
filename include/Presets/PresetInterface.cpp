@@ -7,6 +7,8 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
         duration = a_duration;
     }
 
+	attach_node = a_block.attach_node.get();
+
     for (const auto& type : a_block.event_type.get()) {
         if (type < kTotal && type > kNone) {
             events.insert(static_cast<AnimEvent>(type));
