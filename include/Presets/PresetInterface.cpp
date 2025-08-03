@@ -1,11 +1,20 @@
 #include "Presets/PresetInterface.h"
 
 Presets::AnimData::AnimData(AnimDataBlock& a_block) {
-    name = a_block.anim_name.get();
     priority = a_block.priority.get();
-    if (auto a_duration = a_block.duration.get(); a_duration > 0) {
-        duration = a_duration;
-    }
+
+    auto names = a_block.anim_names.get();
+	auto durations = a_block.durations.get();
+
+	size_t i = 0;
+    for (const auto& name : names) {
+        if (i < durations.size()) {
+            animations.emplace_back(name, durations[i]);
+        } else {
+            animations.emplace_back(name, 0);
+        }
+        ++i;
+	}
 
 	attach_node = a_block.attach_node.get();
 
@@ -39,6 +48,10 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
             logger::warn("Failed to find location: {}", location);
         }
     }
+
+    for (const auto& node : a_block.hide_nodes.get()) {
+        hide_nodes.push_back(node);
+	}
 }
 
 void Presets::Load() {
@@ -77,10 +90,6 @@ void Presets::Load() {
                 AnimDataBlock data;
                 data.load(doc);
                 AnimData anim_data(data);
-                logger::info("Anim Name: {}, Priority: {}, Events: {}, Keywords: {}, Forms: {}, Locations: {}",
-                             anim_data.name, anim_data.priority, anim_data.events.size(),
-                             anim_data.keywords.size(), anim_data.forms.size(), anim_data.locations.size());
-
 
                 for (std::unique_lock lock(m_anim_data_);
                     auto a_event_type : anim_data.events) {

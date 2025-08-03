@@ -8,14 +8,15 @@
 namespace Presets {
 
     struct AnimDataBlock {
-        Field<std::string,rapidjson::Value> anim_name = { "name" };
         Field<int,rapidjson::Value> priority = { "priority" };
-        Field<int,rapidjson::Value> duration = { "duration" };
-        Field<std::string,rapidjson::Value> attach_node = { "attach_node" };
+        Field<std::vector<std::string>,rapidjson::Value> anim_names = { "names" };
+        Field<std::vector<int>,rapidjson::Value> durations = { "durations"};
         Field<std::vector<int>,rapidjson::Value> event_type = { "types" };
         Field<std::vector<std::string>,rapidjson::Value> keywords = { "keywords" };
         Field<std::vector<std::string>,rapidjson::Value> locations = { "locations" };
         Field<std::vector<std::string>,rapidjson::Value> forms = { "forms" };
+        Field<std::string,rapidjson::Value> attach_node = { "attach_node" };
+        Field<std::vector<std::string>,rapidjson::Value> hide_nodes = { "hide_nodes" };
 
         void load(rapidjson::Value& a_block) {
             boost::pfr::for_each_field(*this, [&](auto& field) {
@@ -47,18 +48,23 @@ namespace Presets {
 		kMenuCloseBarter,
 		kMenuOpenJournal,
 		kMenuCloseJournal,
+		kMenuHoverInventory,
+		kMenuHoverMagic,
+		kMenuHoverContainer,
+		kMenuHoverBarter,
 		kTotal
 	};
 
     struct AnimData {
-        std::string name;
+		std::vector<std::pair<std::string, int>> animations; // Animation Chain: <name, duration>
         int priority;
-        int duration;
-        std::string attach_node;
 		std::unordered_set<AnimEvent> events;
 		std::unordered_set<RE::BGSKeyword*> keywords;
 		std::unordered_set<RE::TESForm*> forms;
+		std::unordered_set<RE::FormType> form_types;
 		std::unordered_set<RE::BGSLocation*> locations;
+        std::string attach_node;
+		std::vector<std::string> hide_nodes;
 
         explicit AnimData(AnimDataBlock& a_block);
     };
