@@ -8,6 +8,7 @@ set(headers ${headers}
 	include/Hooks.h
 	include/MCP.h
 	include/Serialization.h
+	include/Animations.h
 	include/Presets/PresetInterface.h
 	include/Presets/Getters.h
 	include/Presets/Config.h
