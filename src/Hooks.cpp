@@ -1,5 +1,7 @@
 #include "Hooks.h"
 #include "Animations.h"
+#include "Manager.h"
+#include "CLibUtilsQTR/Tasker.hpp"
 
 void Hooks::Install()
 {
@@ -9,18 +11,26 @@ void Hooks::Install()
 
     MenuHook<RE::ContainerMenu>::InstallHook(RE::VTABLE_ContainerMenu[0]);
 	MenuHook<RE::InventoryMenu>::InstallHook(RE::VTABLE_InventoryMenu[0]);
+	MenuHook<RE::BarterMenu>::InstallHook(RE::VTABLE_BarterMenu[0]);
+	MenuHook<RE::MagicMenu>::InstallHook(RE::VTABLE_MagicMenu[0]);
+	MenuHook<RE::FavoritesMenu>::InstallHook(RE::VTABLE_FavoritesMenu[0]);
+	MenuHook<RE::MapMenu>::InstallHook(RE::VTABLE_MapMenu[0]);
+	MenuHook<RE::JournalMenu>::InstallHook(RE::VTABLE_JournalMenu[0]);
 
 	auto& trampoline = SKSE::GetTrampoline();
     constexpr size_t size_per_hook = 14;
-	trampoline.create(size_per_hook*4);
+	trampoline.create(size_per_hook*5);
 
-	const REL::Relocation<std::uintptr_t> add_item_functor_hook{ RELOCATION_ID(55946, 56490) };
-	add_item_functor_ = trampoline.write_call<5>(add_item_functor_hook.address() + 0x15D, add_item_functor);
+    GenericEquipObjectHook::InstallHook(trampoline);
+    UnEquipObjectHook::InstallHook(trampoline);
+
+	/*const REL::Relocation<std::uintptr_t> add_item_functor_hook{ RELOCATION_ID(55946, 56490) };
+	add_item_functor_ = trampoline.write_call<5>(add_item_functor_hook.address() + 0x15D, add_item_functor);*/
 
 	const REL::Relocation<std::uintptr_t> function{REL::RelocationID(51019, 51897)};
     InventoryHoverHook::originalFunction = trampoline.write_call<5>(function.address() + REL::Relocate(0x114, 0x22c), InventoryHoverHook::thunk);
 
-	REL::Relocation<std::uintptr_t> target{REL::RelocationID(42420, 43576),
+	const REL::Relocation<std::uintptr_t> target{REL::RelocationID(42420, 43576),
                                                    REL::Relocate(0x22A, 0x21F)};  // AnimationObjects::Load
     AnimObjectHook::_LoadAnimObject = trampoline.write_call<5>(target.address(), AnimObjectHook::thunk);
 
@@ -32,6 +42,32 @@ void Hooks::Install()
 	ActivateHook<RE::ScrollItem>::install();
 	ActivateHook<RE::AlchemyItem>::install();
 	ActivateHook<RE::IngredientItem>::install();
+	ActivateHook<RE::TESObjectBOOK>::install();
+	ActivateHook<RE::TESObjectCONT>::install();
+	ActivateHook<RE::TESObjectDOOR>::install();
+	ActivateHook<RE::TESObjectSTAT>::install();
+	ActivateHook<RE::TESObjectACTI>::install();
+	ActivateHook<RE::TESObjectLIGH>::install();
+	ActivateHook<RE::TESObjectTREE>::install();
+}
+
+RE::StandardItemData* Hooks::GetSelectedItemDataInMenu(std::string& a_menuOut)
+{
+    if (const auto ui = RE::UI::GetSingleton()) {
+	    if (ui->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
+			a_menuOut = RE::InventoryMenu::MENU_NAME;
+			return GetSelectedItemData<RE::InventoryMenu>();
+	    }
+		if (ui->IsMenuOpen(RE::ContainerMenu::MENU_NAME)) {
+			a_menuOut = RE::ContainerMenu::MENU_NAME;
+			return GetSelectedItemData<RE::ContainerMenu>();
+        }
+        if (ui->IsMenuOpen(RE::BarterMenu::MENU_NAME)) {
+			a_menuOut = RE::BarterMenu::MENU_NAME;
+            return GetSelectedItemData<RE::BarterMenu>();
+		}
+    }
+    return nullptr;
 }
 
 void Hooks::add_item_functor(RE::TESObjectREFR* a_this, RE::TESObjectREFR* a_object, int32_t a_count, bool a4, bool a5)
@@ -39,7 +75,7 @@ void Hooks::add_item_functor(RE::TESObjectREFR* a_this, RE::TESObjectREFR* a_obj
 	if (!a_this || !a_object) {
 		return add_item_functor_(a_this, a_object, a_count, a4, a5);
 	}
-    //Manager::GetSingleton()->OnPickup(a_this, a_object);
+    //Manager::GetSingleton()->OnPickup(a_this, a_object->GetBaseObject());
 	return add_item_functor_(a_this, a_object, a_count, a4, a5);
 }
 
@@ -74,21 +110,32 @@ void Hooks::DrawHook::thunk(std::uint32_t a_timer)
 	func(a_timer);
 
     if (IsGameFrozen() || !IsGameWindowInFocus()) {
-        Animations::MyAnimator::GetSingleton()->Pause();
+        Manager::GetSingleton()->PauseAnimators();
     }
 	else {
-        Animations::MyAnimator::GetSingleton()->Resume();
+        Manager::GetSingleton()->ResumeAnimators();
     }
 }
 
 template<typename RefType>
 void Hooks::MoveItemHooks<RefType>::pickUpObject(RefType * a_this, RE::TESObjectREFR * a_object, int32_t a_count, bool a_arg3, bool a_play_sound)
 {
-	if (!a_this || !a_object || a_count>1) {
+	if (!a_this || !a_object) {
 		return pick_up_object_(a_this, a_object, a_count, a_arg3, a_play_sound);
 	}
-	//Manager::GetSingleton()->OnPickup(a_this, a_object);
 
+	if (auto delay = Manager::GetSingleton()->OnPickup(a_this, a_object->GetBaseObject()); delay > 0) {
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                    [a_this, a_object, a_count, a_arg3, a_play_sound] {
+                        SKSE::GetTaskInterface()->AddTask([a_this, a_object, a_count, a_arg3, a_play_sound] {
+                            auto a_actor = a_this->As<RE::Actor>();
+                            a_actor->PickUpObject(a_object, a_count, a_arg3, a_play_sound);
+                        });
+                    },
+                    delay
+                );
+	    return;
+	}
 	pick_up_object_(a_this, a_object, a_count, a_arg3, a_play_sound);
 }
 
@@ -98,34 +145,112 @@ void Hooks::MoveItemHooks<RefType>::addObjectToContainer(RefType* a_this, RE::TE
 	if (!a_this || !a_object || a_count<=0) {
 		return add_object_to_container_(a_this, a_object, a_extraList, a_count, a_fromRefr);
 	}
+
+    int delay = 0;
+
+    if (a_fromRefr && RE::UI::GetSingleton()->IsMenuOpen(RE::BarterMenu::MENU_NAME)) {
+        delay = Manager::GetSingleton()->OnBuy(a_this, a_object);
+    }
+    if (delay > 0) {
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                    [a_this, a_object, a_extraList, a_count, a_fromRefr] {
+                        SKSE::GetTaskInterface()->AddTask([a_this, a_object, a_extraList, a_count, a_fromRefr] {
+                            RE::Actor* a_actor = a_this->As<RE::Actor>();
+                            a_actor->AddObjectToContainer(a_object, a_extraList, a_count, a_fromRefr);
+                            RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
+                        });
+                    },
+                    delay
+                );
+	    return;
+	}
+    
+    delay = Manager::GetSingleton()->OnItemAdd(a_this, a_object);
+    if (delay > 0) {
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                    [a_this, a_object, a_extraList, a_count, a_fromRefr] {
+                        SKSE::GetTaskInterface()->AddTask([a_this, a_object, a_extraList, a_count, a_fromRefr] {
+                            RE::Actor* a_actor = a_this->As<RE::Actor>();
+                            a_actor->AddObjectToContainer(a_object, a_extraList, a_count, a_fromRefr);
+                            RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
+                        });
+                    },
+                    delay
+                );
+	    return;
+	}
+
+
     add_object_to_container_(a_this, a_object, a_extraList, a_count, a_fromRefr);
 }
 
 template<typename RefType>
-RE::ObjectRefHandle* Hooks::MoveItemHooks<RefType>::RemoveItem(RefType * a_this, RE::ObjectRefHandle & a_hidden_return_argument, RE::TESBoundObject * a_item, std::int32_t a_count, RE::ITEM_REMOVE_REASON a_reason, RE::ExtraDataList * a_extra_list, RE::TESObjectREFR * a_move_to_ref, const RE::NiPoint3 * a_drop_loc, const RE::NiPoint3 * a_rotate)
+RE::ObjectRefHandle* Hooks::MoveItemHooks<RefType>::RemoveItem(RefType * a_this, RE::ObjectRefHandle& a_hidden_return_argument, RE::TESBoundObject * a_item, std::int32_t a_count, RE::ITEM_REMOVE_REASON a_reason, RE::ExtraDataList * a_extra_list, RE::TESObjectREFR * a_move_to_ref, const RE::NiPoint3 * a_drop_loc, const RE::NiPoint3 * a_rotate)
 {
 	if (a_reason == RE::ITEM_REMOVE_REASON::kDropping) {
-		RE::ObjectRefHandle* res = remove_item_(a_this, a_hidden_return_argument, a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
-		if (res && res->get()) {
-			//M->HandleDrop(res->get().get());
-		}
-		return res;
+        if (auto delay = Manager::GetSingleton()->OnDrop(a_this, a_item); delay > 0) {
+            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                        [a_this, a_item, a_count, a_drop_loc, a_rotate] {
+                            SKSE::GetTaskInterface()->AddTask([a_this, a_item, a_count, a_drop_loc, a_rotate] {
+                                RE::Actor* a_actor = a_this->As<RE::Actor>();
+                                a_actor->RemoveItem(a_item, a_count, RE::ITEM_REMOVE_REASON::kDropping, nullptr, nullptr, a_drop_loc, a_rotate);
+                                if (a_actor->IsPlayerRef()) {
+                                    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
+                                }
+                            });
+                        },
+                        delay
+                    );
+	        return &a_hidden_return_argument;
+	    }
+
+		return remove_item_(a_this, a_hidden_return_argument, a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
 	}
 
     if (a_reason == RE::ITEM_REMOVE_REASON::kSelling) {
-		RE::ObjectRefHandle* res = remove_item_(a_this, a_hidden_return_argument, a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
-        //M->HandleSell(a_item->GetFormID(),a_move_to_ref);
-		return res;
+        if (auto delay = Manager::GetSingleton()->OnSell(a_this, a_item); delay > 0) {
+            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                        [a_this, a_item, a_count, a_move_to_ref, a_drop_loc, a_rotate] {
+                            SKSE::GetTaskInterface()->AddTask([a_this, a_item, a_count, a_move_to_ref, a_drop_loc, a_rotate] {
+                                RE::Actor* a_actor = a_this->As<RE::Actor>();
+                                a_actor->RemoveItem(a_item, a_count, RE::ITEM_REMOVE_REASON::kSelling, nullptr, a_move_to_ref, a_drop_loc, a_rotate);
+                                RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
+                            });
+                        },
+                        delay
+                    );
+	        return &a_hidden_return_argument;
+	    }
+        
+		return remove_item_(a_this, a_hidden_return_argument, a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
 	}
 
-	if (!a_move_to_ref) {
-        if (const auto a_formid = a_item->GetFormID()) {
+    if (a_reason == RE::ITEM_REMOVE_REASON::kRemove) {
+        if (auto delay = Manager::GetSingleton()->OnItemRemove(a_this, a_item); delay > 0) {
+            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                        [a_this, a_item, a_count, a_move_to_ref, a_drop_loc, a_rotate] {
+                            SKSE::GetTaskInterface()->AddTask([a_this, a_item, a_count, a_move_to_ref, a_drop_loc, a_rotate] {
+                                RE::Actor* a_actor = a_this->As<RE::Actor>();
+                                a_actor->RemoveItem(a_item, a_count, RE::ITEM_REMOVE_REASON::kRemove, nullptr, a_move_to_ref, a_drop_loc, a_rotate);
+                                RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
+                            });
+                        },
+                        delay
+                    );
+	        return &a_hidden_return_argument;
+	    }
+        
+		return remove_item_(a_this, a_hidden_return_argument, a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
+	}
+
+	//if (!a_move_to_ref) {
+        //if (const auto a_formid = a_item->GetFormID()) {
 			//if (!ModCompatibility::Mods::doppelgangers.contains(a_this->GetBaseObject()->GetFormID())) {
 			//    logger::info("Item removed from {} {:x} to nowhere for reason {}. Count {}", a_this->GetName(), a_this->GetFormID(),static_cast<int>(a_reason),a_count);
 			//}
 			//M->OnConsume(a_formid, a_this);
-	    }
-	}
+	    //}
+	//}
 
 	return remove_item_(a_this, a_hidden_return_argument, a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
 }
@@ -138,19 +263,69 @@ RE::UI_MESSAGE_RESULTS Hooks::MenuHook<MenuType>::ProcessMessage_Hook(RE::UIMess
 		return _ProcessMessage(this, a_message);
 	}
 
-	if (const std::string_view menuname = MenuType::MENU_NAME; a_message.menu==menuname) {
-	    if (menuname == RE::ContainerMenu::MENU_NAME) {
-            if (RE::TESObjectREFRPtr refr; LookupReferenceByHandle(RE::ContainerMenu::GetTargetRefHandle(), refr)) {
+    if (menu_blocks.contains(MenuType::MENU_NAME)) {
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+            [msg_type] {
+		        menu_blocks.at(MenuType::MENU_NAME) = msg_type == 3;
+            },
+            500
+		);
+    }
 
-			}
+	if (const std::string_view menuname = MenuType::MENU_NAME; a_message.menu==menuname) {
+
+	    RE::TESObjectREFRPtr refr;
+        RE::ContainerMenu::ContainerMode container_mode = RE::ContainerMenu::ContainerMode::kLoot;
+	    if (menuname == RE::ContainerMenu::MENU_NAME) {
+            if (LookupReferenceByHandle(RE::ContainerMenu::GetTargetRefHandle(), refr)) {
+                container_mode = RE::ContainerMenu::GetContainerMode();
+            }
+        }
+        if (const auto delay = Manager::GetSingleton()->OnMenuOpenClose(menuname,msg_type==1); delay > 0) {
+            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                [menuname, msg_type,refr,container_mode] {
+                    if (msg_type == 1 && menuname == RE::ContainerMenu::MENU_NAME && refr.get()) {
+                        refr->OpenContainer(static_cast<std::int32_t>(container_mode));
+                    }
+                    else {
+                        RE::UIMessageQueue::GetSingleton()->AddMessage(
+                            menuname,msg_type == 1 ? RE::UI_MESSAGE_TYPE::kShow:RE::UI_MESSAGE_TYPE::kHide,nullptr);
+                    }
+                },
+                delay-100
+            );
+
+            RE::UIMessageQueue::GetSingleton()->AddMessage(
+                menuname,msg_type == 1 ? RE::UI_MESSAGE_TYPE::kHide:RE::UI_MESSAGE_TYPE::kShow,nullptr);
+            if (menuname == RE::InventoryMenu::MENU_NAME) {
+                RE::UIMessageQueue::GetSingleton()->AddMessage(
+                    RE::TweenMenu::MENU_NAME,msg_type == 1 ? RE::UI_MESSAGE_TYPE::kHide:RE::UI_MESSAGE_TYPE::kShow,nullptr);
+            }
+
+			return RE::UI_MESSAGE_RESULTS::kHandled;
         }
 	}
     return _ProcessMessage(this, a_message);
 }
 
 template<typename FormType>
-bool Hooks::ActivateHook<FormType>::Activate_Hook(RE::TESBoundObject* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3, RE::TESBoundObject* a_obj, std::int32_t a_targetCount)
+bool Hooks::ActivateHook<FormType>::Activate_Hook(FormType* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3, RE::TESBoundObject* a_obj, std::int32_t a_targetCount)
 {
+    if (a_activatorRef) {
+        const auto item = a_targetRef ? a_targetRef->GetBaseObject() : nullptr;
+        if (auto delay = Manager::GetSingleton()->OnActivate(a_activatorRef,item); delay > 0) {
+            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                    [a_this, a_targetRef, a_activatorRef, a_arg3, a_obj, a_targetCount] {
+                        SKSE::GetTaskInterface()->AddTask([a_this, a_targetRef, a_activatorRef, a_arg3, a_obj, a_targetCount] {
+                            a_this->Activate(a_targetRef,a_activatorRef,a_arg3,a_obj,a_targetCount);
+                        });
+                    },
+                    delay
+                );
+            return true;
+        }
+    }
+
 	return _Activate(a_this, a_targetRef, a_activatorRef, a_arg3, a_obj, a_targetCount);
 }
 
@@ -165,7 +340,7 @@ namespace {
 
 	// yoinked po3's code
     template <class T, class U>
-    auto adjust_pointer(U* a_ptr, std::ptrdiff_t a_adjust) noexcept {
+    auto adjust_pointer(U* a_ptr, const std::ptrdiff_t a_adjust) noexcept {
         auto addr = a_ptr ? reinterpret_cast<std::uintptr_t>(a_ptr) + a_adjust : 0;
         if constexpr (std::is_const_v<U> && std::is_volatile_v<U>) {
             return reinterpret_cast<std::add_cv_t<T>*>(addr);
@@ -203,7 +378,7 @@ namespace {
 
     RE::NiAVObject* Clone(RE::NiAVObject* original) {
         typedef RE::NiAVObject* (*func_t)(RE::NiAVObject* avObj);
-        REL::Relocation<func_t> func{RELOCATION_ID(68835, 70187)};
+        const REL::Relocation<func_t> func{RELOCATION_ID(68835, 70187)};
         return func(original);
     }
 
@@ -217,7 +392,7 @@ namespace {
 		    return nullptr;
 	    }
 
-        auto geometries = GetAllGeometries(ContainerMesh);
+        const auto geometries = GetAllGeometries(ContainerMesh);
 
         for (auto* geom : geometries) {
             if (!geom) {
@@ -253,8 +428,63 @@ int64_t Hooks::InventoryHoverHook::thunk(RE::InventoryEntryData* a1)
 {
 #undef GetObject
 	if (const auto a_bound = a1->GetObject()) {
-		
+		std::string menuName;
+        if (const auto sid = GetSelectedItemDataInMenu(menuName); sid && sid->objDesc->GetObject() == a_bound) {
+			Manager::GetSingleton()->OnItemHover(menuName, sid);
+        }
 	}
 	return originalFunction(a1);
 }
 
+void Hooks::GenericEquipObjectHook::InstallHook(SKSE::Trampoline& a_trampoline)
+{
+    func = a_trampoline.write_call<5>(REL::RelocationID(37938, 38894).address() + REL::Relocate(0xE5, 0x170), thunk);
+}
+
+void Hooks::GenericEquipObjectHook::thunk(RE::ActorEquipManager* a_manager, RE::Actor* a_actor, RE::TESBoundObject* a_object, std::uint64_t a_unk)
+{
+    if (!a_actor || !a_object) {
+        return func(a_manager, a_actor, a_object, a_unk);
+    }
+    if (const auto delay = Manager::GetSingleton()->OnEquip(a_actor, a_object); delay > 0) {
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+            [a_actor, a_object] {
+                SKSE::GetTaskInterface()->AddTask([a_actor, a_object] {
+                    RE::ActorEquipManager::GetSingleton()->EquipObject(a_actor, a_object);
+                    if (a_actor->IsPlayerRef() && RE::UI::GetSingleton()->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
+					    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor, nullptr);
+					}
+                });
+            },
+            delay
+        );
+        return;
+    }
+	func(a_manager, a_actor, a_object, a_unk);
+}
+
+void Hooks::UnEquipObjectHook::InstallHook(SKSE::Trampoline& a_trampoline) {
+    func = a_trampoline.write_call<5>(REL::RelocationID(37945, 38901).address() + REL::Relocate(0x138, 0x1b9), thunk);
+}
+
+void Hooks::UnEquipObjectHook::thunk(RE::ActorEquipManager* a_manager, RE::Actor* a_actor, RE::TESBoundObject* a_object,std::uint64_t a_unk)
+{
+    if (!a_actor || !a_object) {
+        return func(a_manager, a_actor, a_object, a_unk);
+    }
+    if (const auto delay = Manager::GetSingleton()->OnUnequip(a_actor, a_object); delay > 0) {
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+            [a_actor, a_object] {
+                SKSE::GetTaskInterface()->AddTask([a_actor, a_object] {
+                    RE::ActorEquipManager::GetSingleton()->UnequipObject(a_actor, a_object);
+                    if (a_actor->IsPlayerRef() && RE::UI::GetSingleton()->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
+					    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor, nullptr);
+					}
+                });
+            },
+            delay
+        );
+        return;
+    }
+	func(a_manager, a_actor, a_object, a_unk);
+}

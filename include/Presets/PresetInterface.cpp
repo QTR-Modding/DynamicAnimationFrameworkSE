@@ -1,17 +1,44 @@
 #include "Presets/PresetInterface.h"
+#include "CLibUtilsQTR/PresetHelpers/PresetHelpers.hpp"
+
+
+namespace  {
+    template <typename T>
+    void CollectForms(const std::string& form_string, std::unordered_set<T*>& a_container) {
+        if (std::shared_lock lock(PresetHelpers::formGroups_mutex_); PresetHelpers::formGroups.contains(form_string)) {
+            for (auto a_formid:PresetHelpers::formGroups.at(form_string)) {
+                if (auto a_form = RE::TESForm::LookupByID<T>(a_formid)) {
+                    a_container.insert(a_form);
+                }
+                else {
+                    logger::warn("Failed to get form for string: {}",form_string);
+                }
+            }
+        }
+        else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid >0) {
+            if (auto a_form = RE::TESForm::LookupByID<T>(a_formid)) {
+                a_container.insert(a_form);
+            }
+            else {
+                logger::warn("Failed to get form for string: {}",form_string);
+            }
+        }
+
+    }
+}
 
 Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     priority = a_block.priority.get();
 
-    auto names = a_block.anim_names.get();
+    const auto names = a_block.anim_names.get();
 	auto durations = a_block.durations.get();
 
 	size_t i = 0;
     for (const auto& name : names) {
         if (i < durations.size()) {
-            animations.emplace_back(name, durations[i]);
+            animations.emplace_back(nullptr,name,durations[i]);
         } else {
-            animations.emplace_back(name, 0);
+            animations.emplace_back(nullptr,name,0);
         }
         ++i;
 	}
@@ -24,29 +51,21 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
         }
     }
     for (const auto& keyword : a_block.keywords.get()) {
-        auto a_formid = FormReader::GetFormEditorIDFromString(keyword);
-        if (auto a_form = RE::TESForm::LookupByID<RE::BGSKeyword>(a_formid)) {
-            keywords.insert(a_form);
-        } else {
-            logger::warn("Failed to find keyword: {}", keyword);
-        }
+        CollectForms(keyword,keywords);
     }
     for (const auto& form : a_block.forms.get()) {
-        auto a_formid = FormReader::GetFormEditorIDFromString(form);
-        if (auto a_form = RE::TESForm::LookupByID(a_formid)) {
-            forms.insert(a_form);
-        } else {
-            logger::warn("Failed to find form: {}", form);
-        }
+        CollectForms(form,forms);
     }
     for (const auto& location : a_block.locations.get()) {
-        auto a_formid = FormReader::GetFormEditorIDFromString(location);
-        if (auto a_form = RE::TESForm::LookupByID<RE::BGSLocation>(a_formid)) {
-            locations.insert(a_form);
-        }
-        else {
-            logger::warn("Failed to find location: {}", location);
-        }
+        CollectForms(location,locations);
+    }
+
+    for (const auto& form : a_block.actors.get()) {
+        const auto a_formid = FormReader::GetFormEditorIDFromString(form);
+        actors.insert(a_formid);
+    }
+    for (const auto& keyword : a_block.actor_keywords.get()) {
+        CollectForms(keyword,actor_keywords);
     }
 
     for (const auto& node : a_block.hide_nodes.get()) {
@@ -58,6 +77,65 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
             form_types.insert(static_cast<RE::FormType>(form_type));
         }
 	}
+
+    for (const auto& form_type_str : a_block.form_types_str.get()) {
+        auto form_type = RE::StringToFormType(form_type_str);
+        if (form_type < RE::FormType::Max && form_type > RE::FormType::None) {
+            form_types.insert(form_type);
+        }
+	}
+
+    delay = 0;
+
+    if (const auto a_delay = a_block.delay_int.get(); a_delay > 0) {
+        logger::info("asd");
+        delay = a_delay;
+    }
+    else if (a_block.delay.get()) {
+        int tot = 0;
+        for (const auto dur : durations) {
+            tot += dur;
+        }
+        if (tot > 0) {
+            delay = tot;
+        }
+    }
+}
+
+Presets::AnimEvent Presets::GetMenuAnimEvent(const std::string_view menu_name, const MenuAnimEventType a_type)
+{
+    if (menu_name == RE::InventoryMenu::MENU_NAME) {
+        return a_type == kOpen ? kMenuOpenInventory :
+               a_type == kClose ? kMenuCloseInventory :
+			a_type == kHover ? kMenuHoverInventory : kNone;
+    }
+    if (menu_name == RE::ContainerMenu::MENU_NAME) {
+        return a_type == kOpen ? kMenuOpenContainer :
+			a_type == kClose ? kMenuCloseContainer :
+			a_type == kHover ? kMenuHoverContainer : kNone;
+    }
+    if (menu_name == RE::MagicMenu::MENU_NAME) {
+		return a_type == kOpen ? kMenuOpenMagic :
+			a_type == kClose ? kMenuCloseMagic : kNone;
+    }
+    if (menu_name == RE::FavoritesMenu::MENU_NAME) {
+		return a_type == kOpen ? kMenuOpenFavorites :
+			a_type == kClose ? kMenuCloseFavorites : kNone;
+    }
+    if (menu_name == RE::MapMenu::MENU_NAME) {
+		return a_type == kOpen ? kMenuOpenMap :
+			a_type == kClose ? kMenuCloseMap :kNone;
+    }
+    if (menu_name == RE::BarterMenu::MENU_NAME) {
+		return a_type == kOpen ? kMenuOpenBarter :
+			a_type == kClose ? kMenuCloseBarter :
+			a_type == kHover ? kMenuHoverBarter : kNone;
+    }
+    if (menu_name == RE::JournalMenu::MENU_NAME) {
+		return a_type == kOpen ? kMenuOpenJournal :
+			a_type == kClose ? kMenuCloseJournal : kNone;
+    }
+    return kNone;
 }
 
 void Presets::Load() {
@@ -99,7 +177,7 @@ void Presets::Load() {
 
                 for (std::unique_lock lock(m_anim_data_);
                     auto a_event_type : anim_data.events) {
-					anim_map.emplace(a_event_type, anim_data);
+                    anim_map[a_event_type].push_back(anim_data);
                 }
             }
         }

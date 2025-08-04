@@ -4,6 +4,7 @@ set(headers ${headers}
 	include/logger.h
 	include/Settings.h
 	include/Manager.h
+	include/Animator.h
 	include/Events.h
 	include/Hooks.h
 	include/MCP.h

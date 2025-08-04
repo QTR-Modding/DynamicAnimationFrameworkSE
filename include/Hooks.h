@@ -4,14 +4,54 @@ namespace Hooks {
 
 	void Install();
 
+    inline std::map<std::string_view,bool> menu_blocks = {
+         {RE::InventoryMenu::MENU_NAME, true},
+        {RE::ContainerMenu::MENU_NAME, true},
+        {RE::BarterMenu::MENU_NAME, true},
+    }; 
+
+    template <typename MenuType>
+    RE::StandardItemData* GetSelectedItemData() {
+        if (menu_blocks.contains(MenuType::MENU_NAME) && menu_blocks.at(MenuType::MENU_NAME)) {
+            return nullptr;
+		}
+        if (const auto ui = RE::UI::GetSingleton()) {
+            if (const auto menu = ui->GetMenu<MenuType>()) {
+	            if (RE::ItemList* a_itemList = menu->GetRuntimeData().itemList) {
+		            if (auto* item = a_itemList->GetSelectedItem()) {
+			            return &item->data;
+		            }
+	            }
+            }
+        }
+		return nullptr;
+    }
+
+    RE::StandardItemData* GetSelectedItemDataInMenu(std::string& a_menuOut);
+
     struct DrawHook {
 		static void thunk(std::uint32_t a_timer);
         static inline REL::Relocation<decltype(thunk)> func;
 	};
 
+	// Source: https://github.com/RavenKZP/Immersive-Weapon-Switch/blob/main/src/Hooks.cpp
+    struct GenericEquipObjectHook {
+        static void InstallHook(SKSE::Trampoline& a_trampoline);
+        static void thunk(RE::ActorEquipManager* a_manager, RE::Actor* a_actor, RE::TESBoundObject* a_object,
+                          std::uint64_t a_unk);
+        static inline REL::Relocation<decltype(thunk)> func;
+    };
+
+    struct UnEquipObjectHook {
+        static void InstallHook(SKSE::Trampoline& a_trampoline);
+        static void thunk(RE::ActorEquipManager* a_manager, RE::Actor* a_actor, RE::TESBoundObject* a_object,
+                          std::uint64_t a_unk);
+        static inline REL::Relocation<decltype(thunk)> func;
+    };
+
     template <typename FormType>
     class ActivateHook : public FormType {
-        static bool Activate_Hook(RE::TESBoundObject* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3, RE::TESBoundObject* a_obj, std::int32_t a_targetCount);
+        static bool Activate_Hook(FormType* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3, RE::TESBoundObject* a_obj, std::int32_t a_targetCount);
         static inline REL::Relocation<decltype(&FormType::Activate)> _Activate;
     public:
         static void install() {
