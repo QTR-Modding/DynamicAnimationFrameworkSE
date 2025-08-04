@@ -15,6 +15,7 @@ namespace Presets {
         Field<std::vector<std::string>,rapidjson::Value> keywords = { "keywords" };
         Field<std::vector<std::string>,rapidjson::Value> locations = { "locations" };
         Field<std::vector<std::string>,rapidjson::Value> forms = { "forms" };
+        Field<std::vector<int>,rapidjson::Value> form_types = { "form_types" };
         Field<std::string,rapidjson::Value> attach_node = { "attach_node" };
         Field<std::vector<std::string>,rapidjson::Value> hide_nodes = { "hide_nodes" };
 

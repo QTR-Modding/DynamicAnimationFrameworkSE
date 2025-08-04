@@ -52,6 +52,12 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     for (const auto& node : a_block.hide_nodes.get()) {
         hide_nodes.push_back(node);
 	}
+
+    for (const auto& form_type : a_block.form_types.get()) {
+        if (form_type < static_cast<int>(RE::FormType::Max) && form_type > static_cast<int>(RE::FormType::None)) {
+            form_types.insert(static_cast<RE::FormType>(form_type));
+        }
+	}
 }
 
 void Presets::Load() {
