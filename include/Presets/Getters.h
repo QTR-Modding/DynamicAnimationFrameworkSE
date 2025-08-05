@@ -19,55 +19,90 @@ namespace Presets {
 
     namespace Getters {
 
+        template<class>
+        inline constexpr bool always_false_v = false;
+
         namespace JSON {
+
+            template <typename T>
+            bool GetScalar(const rapidjson::Value& val, T& out) {
+                if constexpr (std::is_same_v<T, std::string>) {
+                    if (val.IsString()) {
+                        out = val.GetString();
+                        return true;
+                    }
+                }
+                else if constexpr (std::is_same_v<T, float>) {
+                    if (val.IsFloat()) {
+                        out = val.GetFloat();
+                        return true;
+                    }
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    if (val.IsDouble()) {
+                        out = val.GetDouble();
+                        return true;
+                    }
+                }
+                else if constexpr (std::is_same_v<T, std::int64_t>) {
+                    if (val.IsInt64()) {
+                        out = val.GetInt64();
+                        return true;
+                    }
+                }
+                else if constexpr (std::is_same_v<T, std::uint64_t>) {
+                    if (val.IsUint64()) {
+                        out = val.GetUint64();
+                        return true;
+                    }
+                }
+                else if constexpr (std::is_same_v<T, std::int32_t> || std::is_same_v<T, int>) {
+                    if (val.IsInt()) {
+                        out = val.GetInt();
+                        return true;
+                    }
+                }
+                else if constexpr (std::is_same_v<T, std::uint32_t>) {
+                    if (val.IsUint()) {
+                        out = val.GetUint();
+                        return true;
+                    }
+                }
+                else if constexpr (std::is_same_v<T, bool>) {
+                    if (val.IsBool()) {
+                        out = val.GetBool();
+                        return true;
+                    }
+                }
+                else {
+                    static_assert(always_false_v<T>, "Unsupported scalar type");
+                }
+
+                return false;
+            }
+
             template <typename T>
             bool Get(const rapidjson::Value& val, T& a_to_set) {
                 if constexpr (detail::is_std_vector_v<T>) {
                     using ElemType = typename T::value_type;
 
                     if (!val.IsArray()) return false;
+                    const auto& arr = val.GetArray();
+                    a_to_set.reserve(arr.Size());
 
-                    for (const auto& item : val.GetArray()) {
-                        if constexpr (std::is_same_v<ElemType, std::string>) {
-                            if (item.IsString()) a_to_set.push_back(item.GetString());
-                            else return false;
-                        } else if constexpr (std::is_same_v<ElemType, int>) {
-                            if (item.IsInt()) a_to_set.push_back(item.GetInt());
-                            else return false;
-                        } else if constexpr (std::is_same_v<ElemType, bool>) {
-                            if (item.IsBool()) a_to_set.push_back(item.GetBool());
-                            else return false;
-                        } else {
-                            static_assert([]{ return false; }(), "Unsupported element type in vector");
-                        }
+                    for (const auto& item : arr) {
+                        ElemType temp;
+                        if (!GetScalar(item, temp)) return false;
+                        a_to_set.push_back(std::move(temp));
                     }
 
                     return true;
 
-                }
-                else {
-                    if constexpr (std::is_same_v<T, std::string>) {
-                        if (val.IsString()) {
-                            a_to_set = val.GetString();
-                            return true;
-                        }
-                    } else if constexpr (std::is_same_v<T, int>) {
-                        if (val.IsInt()) {
-                            a_to_set = val.GetInt();
-                            return true;
-                        }
-                    } else if constexpr (std::is_same_v<T, bool>) {
-                        if (val.IsBool()) {
-                            a_to_set = val.GetBool();
-                            return true;
-                        }
-                    } else {
-                        static_assert([]{ return false; }(), "Unsupported scalar type");
-                    }
-
-                    return false;
+                } else {
+                    return GetScalar(val, a_to_set);
                 }
             }
+
 
             template <typename T>
             bool Get(const rapidjson::Value& obj, const std::string& key, T& out) {
