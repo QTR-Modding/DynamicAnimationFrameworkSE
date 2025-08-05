@@ -1,7 +1,6 @@
 #include "Hooks.h"
 #include "Animations.h"
 #include "Manager.h"
-#include "CLibUtilsQTR/Tasker.hpp"
 
 void Hooks::Install()
 {
@@ -125,15 +124,7 @@ void Hooks::MoveItemHooks<RefType>::pickUpObject(RefType * a_this, RE::TESObject
 	}
 
 	if (auto delay = Manager::GetSingleton()->OnPickup(a_this, a_object->GetBaseObject()); delay > 0) {
-        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-                    [a_this, a_object, a_count, a_arg3, a_play_sound] {
-                        SKSE::GetTaskInterface()->AddTask([a_this, a_object, a_count, a_arg3, a_play_sound] {
-                            auto a_actor = a_this->As<RE::Actor>();
-                            a_actor->PickUpObject(a_object, a_count, a_arg3, a_play_sound);
-                        });
-                    },
-                    delay
-                );
+		CallOriginalMethodDelayed(delay,a_this,pick_up_object_.get(),a_this,a_object,a_count,a_arg3,a_play_sound);
 	    return;
 	}
 	pick_up_object_(a_this, a_object, a_count, a_arg3, a_play_sound);
@@ -152,31 +143,13 @@ void Hooks::MoveItemHooks<RefType>::addObjectToContainer(RefType* a_this, RE::TE
         delay = Manager::GetSingleton()->OnBuy(a_this, a_object);
     }
     if (delay > 0) {
-        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-                    [a_this, a_object, a_extraList, a_count, a_fromRefr] {
-                        SKSE::GetTaskInterface()->AddTask([a_this, a_object, a_extraList, a_count, a_fromRefr] {
-                            RE::Actor* a_actor = a_this->As<RE::Actor>();
-                            a_actor->AddObjectToContainer(a_object, a_extraList, a_count, a_fromRefr);
-                            RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
-                        });
-                    },
-                    delay
-                );
+		CallOriginalMethodDelayed(delay, a_this, add_object_to_container_.get(), a_this, a_object, a_extraList, a_count, a_fromRefr);
 	    return;
 	}
     
     delay = Manager::GetSingleton()->OnItemAdd(a_this, a_object);
     if (delay > 0) {
-        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-                    [a_this, a_object, a_extraList, a_count, a_fromRefr] {
-                        SKSE::GetTaskInterface()->AddTask([a_this, a_object, a_extraList, a_count, a_fromRefr] {
-                            RE::Actor* a_actor = a_this->As<RE::Actor>();
-                            a_actor->AddObjectToContainer(a_object, a_extraList, a_count, a_fromRefr);
-                            RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
-                        });
-                    },
-                    delay
-                );
+		CallOriginalMethodDelayed(delay, a_this, add_object_to_container_.get(), a_this, a_object, a_extraList, a_count, a_fromRefr);
 	    return;
 	}
 
@@ -189,18 +162,7 @@ RE::ObjectRefHandle* Hooks::MoveItemHooks<RefType>::RemoveItem(RefType * a_this,
 {
 	if (a_reason == RE::ITEM_REMOVE_REASON::kDropping) {
         if (auto delay = Manager::GetSingleton()->OnDrop(a_this, a_item); delay > 0) {
-            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-                        [a_this, a_item, a_count, a_drop_loc, a_rotate] {
-                            SKSE::GetTaskInterface()->AddTask([a_this, a_item, a_count, a_drop_loc, a_rotate] {
-                                RE::Actor* a_actor = a_this->As<RE::Actor>();
-                                a_actor->RemoveItem(a_item, a_count, RE::ITEM_REMOVE_REASON::kDropping, nullptr, nullptr, a_drop_loc, a_rotate);
-                                if (a_actor->IsPlayerRef()) {
-                                    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
-                                }
-                            });
-                        },
-                        delay
-                    );
+            CallOriginalMethodDelayed(delay, a_this, remove_item_.get(), a_this, std::ref(a_hidden_return_argument), a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
 	        return &a_hidden_return_argument;
 	    }
 
@@ -209,16 +171,7 @@ RE::ObjectRefHandle* Hooks::MoveItemHooks<RefType>::RemoveItem(RefType * a_this,
 
     if (a_reason == RE::ITEM_REMOVE_REASON::kSelling) {
         if (auto delay = Manager::GetSingleton()->OnSell(a_this, a_item); delay > 0) {
-            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-                        [a_this, a_item, a_count, a_move_to_ref, a_drop_loc, a_rotate] {
-                            SKSE::GetTaskInterface()->AddTask([a_this, a_item, a_count, a_move_to_ref, a_drop_loc, a_rotate] {
-                                RE::Actor* a_actor = a_this->As<RE::Actor>();
-                                a_actor->RemoveItem(a_item, a_count, RE::ITEM_REMOVE_REASON::kSelling, nullptr, a_move_to_ref, a_drop_loc, a_rotate);
-                                RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
-                            });
-                        },
-                        delay
-                    );
+			CallOriginalMethodDelayed(delay, a_this, remove_item_.get(), a_this, std::ref(a_hidden_return_argument), a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
 	        return &a_hidden_return_argument;
 	    }
         
@@ -227,16 +180,7 @@ RE::ObjectRefHandle* Hooks::MoveItemHooks<RefType>::RemoveItem(RefType * a_this,
 
     if (a_reason == RE::ITEM_REMOVE_REASON::kRemove) {
         if (auto delay = Manager::GetSingleton()->OnItemRemove(a_this, a_item); delay > 0) {
-            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-                        [a_this, a_item, a_count, a_move_to_ref, a_drop_loc, a_rotate] {
-                            SKSE::GetTaskInterface()->AddTask([a_this, a_item, a_count, a_move_to_ref, a_drop_loc, a_rotate] {
-                                RE::Actor* a_actor = a_this->As<RE::Actor>();
-                                a_actor->RemoveItem(a_item, a_count, RE::ITEM_REMOVE_REASON::kRemove, nullptr, a_move_to_ref, a_drop_loc, a_rotate);
-                                RE::SendUIMessage::SendInventoryUpdateMessage(a_actor,nullptr);
-                            });
-                        },
-                        delay
-                    );
+			CallOriginalMethodDelayed(delay, a_this, remove_item_.get(), a_this, std::ref(a_hidden_return_argument), a_item, a_count, a_reason, a_extra_list, a_move_to_ref, a_drop_loc, a_rotate);
 	        return &a_hidden_return_argument;
 	    }
         
@@ -264,7 +208,7 @@ RE::UI_MESSAGE_RESULTS Hooks::MenuHook<MenuType>::ProcessMessage_Hook(RE::UIMess
 	}
 
     if (menu_blocks.contains(MenuType::MENU_NAME)) {
-        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+          clib_utilsQTR::Tasker::GetSingleton()->PushTask(
             [msg_type] {
 		        menu_blocks.at(MenuType::MENU_NAME) = msg_type == 3;
             },
@@ -282,7 +226,7 @@ RE::UI_MESSAGE_RESULTS Hooks::MenuHook<MenuType>::ProcessMessage_Hook(RE::UIMess
             }
         }
         if (const auto delay = Manager::GetSingleton()->OnMenuOpenClose(menuname,msg_type==1); delay > 0) {
-            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+              clib_utilsQTR::Tasker::GetSingleton()->PushTask(
                 [menuname, msg_type,refr,container_mode] {
                     if (msg_type == 1 && menuname == RE::ContainerMenu::MENU_NAME && refr.get()) {
                         refr->OpenContainer(static_cast<std::int32_t>(container_mode));
@@ -292,7 +236,7 @@ RE::UI_MESSAGE_RESULTS Hooks::MenuHook<MenuType>::ProcessMessage_Hook(RE::UIMess
                             menuname,msg_type == 1 ? RE::UI_MESSAGE_TYPE::kShow:RE::UI_MESSAGE_TYPE::kHide,nullptr);
                     }
                 },
-                delay-100
+                delay
             );
 
             RE::UIMessageQueue::GetSingleton()->AddMessage(
@@ -314,19 +258,21 @@ bool Hooks::ActivateHook<FormType>::Activate_Hook(FormType* a_this, RE::TESObjec
     if (a_activatorRef) {
         const auto item = a_targetRef ? a_targetRef->GetBaseObject() : nullptr;
         if (auto delay = Manager::GetSingleton()->OnActivate(a_activatorRef,item); delay > 0) {
-            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-                    [a_this, a_targetRef, a_activatorRef, a_arg3, a_obj, a_targetCount] {
-                        SKSE::GetTaskInterface()->AddTask([a_this, a_targetRef, a_activatorRef, a_arg3, a_obj, a_targetCount] {
-                            a_this->Activate(a_targetRef,a_activatorRef,a_arg3,a_obj,a_targetCount);
-                        });
-                    },
-                    delay
-                );
+            CallLambdaDelayed(delay, [=] {
+                _Activate(a_this, a_targetRef, a_activatorRef, a_arg3, a_obj, a_targetCount);
+            });
+
             return true;
         }
     }
 
 	return _Activate(a_this, a_targetRef, a_activatorRef, a_arg3, a_obj, a_targetCount);
+}
+
+template <typename FormType>
+void Hooks::ActivateHook<FormType>::install() {
+    REL::Relocation<std::uintptr_t> _vtbl{ FormType::VTABLE[0] };
+    _Activate = _vtbl.write_vfunc(0x37, Activate_Hook);
 }
 
 template<typename MenuType>
@@ -447,18 +393,18 @@ void Hooks::GenericEquipObjectHook::thunk(RE::ActorEquipManager* a_manager, RE::
         return func(a_manager, a_actor, a_object, a_unk);
     }
     if (const auto delay = Manager::GetSingleton()->OnEquip(a_actor, a_object); delay > 0) {
-        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-            [a_actor, a_object] {
-                SKSE::GetTaskInterface()->AddTask([a_actor, a_object] {
-                    RE::ActorEquipManager::GetSingleton()->EquipObject(a_actor, a_object);
-                    if (a_actor->IsPlayerRef() && RE::UI::GetSingleton()->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
-					    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor, nullptr);
-					}
-                });
-            },
-            delay
-        );
-        return;
+     //     clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+     //       [a_actor, a_object] {
+     //           SKSE::GetTaskInterface()->AddTask([a_actor, a_object] {
+     //               RE::ActorEquipManager::GetSingleton()->EquipObject(a_actor, a_object);
+     //               if (a_actor->IsPlayerRef() && RE::UI::GetSingleton()->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
+					//    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor, nullptr);
+					//}
+     //           });
+     //       },
+     //       delay
+     //   );
+     //   return;
     }
 	func(a_manager, a_actor, a_object, a_unk);
 }
@@ -473,18 +419,18 @@ void Hooks::UnEquipObjectHook::thunk(RE::ActorEquipManager* a_manager, RE::Actor
         return func(a_manager, a_actor, a_object, a_unk);
     }
     if (const auto delay = Manager::GetSingleton()->OnUnequip(a_actor, a_object); delay > 0) {
-        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-            [a_actor, a_object] {
-                SKSE::GetTaskInterface()->AddTask([a_actor, a_object] {
-                    RE::ActorEquipManager::GetSingleton()->UnequipObject(a_actor, a_object);
-                    if (a_actor->IsPlayerRef() && RE::UI::GetSingleton()->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
-					    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor, nullptr);
-					}
-                });
-            },
-            delay
-        );
-        return;
+     //     clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+     //       [a_actor, a_object] {
+     //           SKSE::GetTaskInterface()->AddTask([a_actor, a_object] {
+     //               RE::ActorEquipManager::GetSingleton()->UnequipObject(a_actor, a_object);
+     //               if (a_actor->IsPlayerRef() && RE::UI::GetSingleton()->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
+					//    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor, nullptr);
+					//}
+     //           });
+     //       },
+     //       delay
+     //   );
+     //   return;
     }
 	func(a_manager, a_actor, a_object, a_unk);
 }

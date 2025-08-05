@@ -1,4 +1,5 @@
 #pragma once
+#include "CLibUtilsQTR/Tasker.hpp"
 
 namespace Hooks {
 
@@ -8,7 +9,52 @@ namespace Hooks {
          {RE::InventoryMenu::MENU_NAME, true},
         {RE::ContainerMenu::MENU_NAME, true},
         {RE::BarterMenu::MENU_NAME, true},
-    }; 
+    };
+
+    template <typename Func, typename... Args>
+    void CallOriginalMethodDelayed(int delay, RE::TESObjectREFR* AoI, Func func, Args&&... args)
+    {
+        auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
+		auto smart = RE::NiPointer(AoI);
+
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+            [smart, func, args_tuple = std::move(args_tuple)]() mutable {
+                SKSE::GetTaskInterface()->AddTask(
+                    [smart, func, args_tuple = std::move(args_tuple)]() mutable {
+                        if (!smart) {
+                            return;
+						}
+                        std::apply([&]<typename... T0>(T0&&... unpacked) {
+                            std::invoke(func, std::forward<T0>(unpacked)...);
+                        }, std::move(args_tuple));
+
+                        if (auto ui = RE::UI::GetSingleton();
+                            ui->IsMenuOpen(RE::InventoryMenu::MENU_NAME) ||
+                            ui->IsMenuOpen(RE::BarterMenu::MENU_NAME) ||
+                            ui->IsMenuOpen(RE::ContainerMenu::MENU_NAME)) {
+                            RE::SendUIMessage::SendInventoryUpdateMessage(smart.get(), nullptr);
+                        }
+                    }
+                );
+            },
+            delay
+        );
+    }
+
+    template <typename Callable>
+    void CallLambdaDelayed(int delay, Callable&& func)
+    {
+        auto wrapper = std::forward<Callable>(func);
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+            [wrapper]() mutable {
+                SKSE::GetTaskInterface()->AddTask([wrapper = std::move(wrapper)]() mutable {
+                    wrapper();
+                });
+            },
+            delay
+        );
+    }
+
 
     template <typename MenuType>
     RE::StandardItemData* GetSelectedItemData() {
@@ -54,10 +100,7 @@ namespace Hooks {
         static bool Activate_Hook(FormType* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3, RE::TESBoundObject* a_obj, std::int32_t a_targetCount);
         static inline REL::Relocation<decltype(&FormType::Activate)> _Activate;
     public:
-        static void install() {
-		    REL::Relocation<std::uintptr_t> _vtbl{ FormType::VTABLE[0] };
-		    _Activate = _vtbl.write_vfunc(0x37, Activate_Hook);
-        }
+        static void install();
     };
 
     // Credits: SkyrimThiago
