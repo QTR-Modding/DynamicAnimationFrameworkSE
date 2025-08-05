@@ -60,10 +60,17 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
         CollectForms(location,locations);
     }
 
-    for (const auto& form : a_block.actors.get()) {
-        const auto a_formid = FormReader::GetFormEditorIDFromString(form);
+    for (const auto& a_formid : a_block.actors.get()) {
         actors.insert(a_formid);
     }
+    for (const auto& a_formid_str : a_block.actors_str.get()) {
+        if (const auto a_formid = FormReader::GetFormEditorIDFromString(a_formid_str); a_formid > 0) {
+            actors.insert(a_formid);
+        }
+        else {
+			logger::warn("Failed to get actor form for string: {}", a_formid_str);
+        }
+	}
     for (const auto& keyword : a_block.actor_keywords.get()) {
         CollectForms(keyword,actor_keywords);
     }

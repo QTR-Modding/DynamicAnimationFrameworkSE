@@ -20,7 +20,8 @@ namespace Presets {
         Field<std::vector<std::string>,rapidjson::Value> form_types_str = { "form_types" };
         Field<std::vector<std::string>,rapidjson::Value> keywords = { "keywords" };
 
-        Field<std::vector<std::string>,rapidjson::Value> actors = { "actors" };
+        Field<std::vector<uint32_t>,rapidjson::Value> actors = { "actors" };
+        Field<std::vector<std::string>,rapidjson::Value> actors_str = { "actors" };
         Field<std::vector<std::string>,rapidjson::Value> locations = { "locations" };
 		Field<std::vector<std::string>,rapidjson::Value> actor_keywords = { "actor_keywords" };
 
