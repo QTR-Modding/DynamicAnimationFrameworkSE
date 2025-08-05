@@ -25,7 +25,7 @@ class Manager : public clib_util::singleton::ISingleton<Manager>
 
 	struct Filter {
 	    RE::FormID actor_id;
-	    RE::TESForm* form;
+	    RE::TESForm* form = nullptr;
 	};
 
     static Presets::AnimData GetAnimData(Presets::AnimEvent a_animevent, const Filter& filter);
