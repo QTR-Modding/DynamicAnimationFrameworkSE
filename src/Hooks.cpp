@@ -106,7 +106,7 @@ void Hooks::MoveItemHooks<RefType>::pickUpObject(RefType * a_this, RE::TESObject
 	}
 
 	if (auto delay = Manager::GetSingleton()->OnPickup(a_this, a_object->GetBaseObject()); delay > 0) {
-		CallOriginalMethodDelayed(delay,a_this,pick_up_object_.get(),a_this,a_object,a_count,a_arg3,a_play_sound);
+		CallOriginalMethodDelayed(delay, a_this, pick_up_object_.get(), a_this, a_object, a_count, a_arg3, a_play_sound);
 	    return;
 	}
 	pick_up_object_(a_this, a_object, a_count, a_arg3, a_play_sound);
