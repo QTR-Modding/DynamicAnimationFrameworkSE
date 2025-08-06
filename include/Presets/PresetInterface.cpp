@@ -35,10 +35,14 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
 
 	size_t i = 0;
     for (const auto& name : names) {
+		RE::TESIdleForm* a_idle = nullptr;
+		if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0){
+		    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
+		}
         if (i < durations.size()) {
-            animations.emplace_back(nullptr,name,durations[i]);
+            animations.emplace_back(a_idle, name,durations[i]);
         } else {
-            animations.emplace_back(nullptr,name,0);
+            animations.emplace_back(a_idle, name,0);
         }
         ++i;
 	}
@@ -145,18 +149,24 @@ Presets::AnimEvent Presets::GetMenuAnimEvent(const std::string_view menu_name, c
 }
 
 void Presets::Load() {
-    constexpr std::string_view mod_folder = R"(Data\SKSE\Plugins\DAF)";
+    constexpr std::string_view animDataFolder = R"(Data\SKSE\Plugins\DAF\animData)";
 
-    if (!std::filesystem::exists(mod_folder)) {
-        logger::error("Mod folder does not exist: {}", mod_folder);
+    if (!std::filesystem::exists(animDataFolder)) {
+        logger::error("Mod folder does not exist: {}", animDataFolder);
         return;
     }
 
     // loop folder for folders
-    for (const auto& entry : std::filesystem::directory_iterator(mod_folder)) {
+    for (const auto& entry : std::filesystem::directory_iterator(animDataFolder)) {
         if (!entry.is_directory()) {
             continue;
         }
+		// skip if it has special characters
+        if (entry.path().filename().string().find_first_of("!@#$%^&*()[]{};:'\"\\|,.<>/?") != std::string::npos) {
+            logger::warn("Skipping folder with special characters: {}", entry.path().filename().string());
+            continue;
+		}
+
         std::string folder_name = entry.path().filename().string();
         logger::info("Found folder: {}", folder_name);
         // Load JSON files in the folder
@@ -189,3 +199,4 @@ void Presets::Load() {
         }
     }
 }
+
