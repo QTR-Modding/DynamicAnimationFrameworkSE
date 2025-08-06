@@ -15,7 +15,8 @@ RE::StandardItemData* Utils::GetSelectedItemDataInMenu(std::string& a_menuOut) {
             return GetSelectedItemData<RE::BarterMenu>();
         }
     }
-    return nullptr;}
+    return nullptr;
+}
 
 const char* Utils::GetModelPath(RE::TESForm* a_form, [[maybe_unused]] RE::Actor* a_actor) {
     switch (a_form->GetFormType()) {
