@@ -4,20 +4,32 @@
 #include "Config.h"
 #include "boost/pfr/core.hpp"
 #include "CLibUtilsQTR/FormReader.hpp"
+#include "Animator.h"
 
 namespace Presets {
 
     struct AnimDataBlock {
-        Field<int,rapidjson::Value> priority = { "priority" };
+        Field<int,rapidjson::Value> priority = { "priority",0};
+        Field<std::vector<int>,rapidjson::Value> event_type = { "types" };
+
         Field<std::vector<std::string>,rapidjson::Value> anim_names = { "names" };
         Field<std::vector<int>,rapidjson::Value> durations = { "durations"};
-        Field<std::vector<int>,rapidjson::Value> event_type = { "types" };
-        Field<std::vector<std::string>,rapidjson::Value> keywords = { "keywords" };
-        Field<std::vector<std::string>,rapidjson::Value> locations = { "locations" };
+
         Field<std::vector<std::string>,rapidjson::Value> forms = { "forms" };
         Field<std::vector<int>,rapidjson::Value> form_types = { "form_types" };
+        Field<std::vector<std::string>,rapidjson::Value> form_types_str = { "form_types" };
+        Field<std::vector<std::string>,rapidjson::Value> keywords = { "keywords" };
+
+        Field<std::vector<uint32_t>,rapidjson::Value> actors = { "actors" };
+        Field<std::vector<std::string>,rapidjson::Value> actors_str = { "actors" };
+        Field<std::vector<std::string>,rapidjson::Value> locations = { "locations" };
+		Field<std::vector<std::string>,rapidjson::Value> actor_keywords = { "actor_keywords" };
+
         Field<std::string,rapidjson::Value> attach_node = { "attach_node" };
         Field<std::vector<std::string>,rapidjson::Value> hide_nodes = { "hide_nodes" };
+
+        Field<bool,rapidjson::Value> delay = { "delay",false};
+        Field<int,rapidjson::Value> delay_int = { "delay",0};
 
         void load(rapidjson::Value& a_block) {
             boost::pfr::for_each_field(*this, [&](auto& field) {
@@ -37,40 +49,59 @@ namespace Presets {
 		kUnequip,
 		kBuy,
         kSell,
-		kMenuOpenContainer,
-		kMenuCloseContainer,
 		kMenuOpenInventory,
 		kMenuCloseInventory,
+		kMenuHoverInventory,
+		kMenuOpenContainer,
+		kMenuCloseContainer,
+		kMenuHoverContainer,
 		kMenuOpenMagic,
 		kMenuCloseMagic,
-		kMenuOpenMap,
-		kMenuCloseMap,
+		//kMenuHoverMagic,
 		kMenuOpenBarter,
 		kMenuCloseBarter,
+		kMenuHoverBarter,
+		kMenuOpenFavorites,
+		kMenuCloseFavorites,
+		kMenuOpenMap,
+		kMenuCloseMap,
 		kMenuOpenJournal,
 		kMenuCloseJournal,
-		kMenuHoverInventory,
-		kMenuHoverMagic,
-		kMenuHoverContainer,
-		kMenuHoverBarter,
 		kTotal
 	};
 
+	enum MenuAnimEventType : std::uint8_t {
+	    kOpen,
+	    kClose,
+	    kHover,
+	};
+
+	AnimEvent GetMenuAnimEvent(std::string_view menu_name, MenuAnimEventType a_type);
+
     struct AnimData {
-		std::vector<std::pair<std::string, int>> animations; // Animation Chain: <name, duration>
+		std::vector<Animation> animations; // Animation Chain: <name, duration>
+
         int priority;
 		std::unordered_set<AnimEvent> events;
-		std::unordered_set<RE::BGSKeyword*> keywords;
-		std::unordered_set<RE::TESForm*> forms;
-		std::unordered_set<RE::FormType> form_types;
-		std::unordered_set<RE::BGSLocation*> locations;
-        std::string attach_node;
-		std::vector<std::string> hide_nodes;
 
+        std::unordered_set<RE::TESForm*> forms;
+		std::unordered_set<RE::FormType> form_types;
+		std::unordered_set<RE::BGSKeyword*> keywords;
+
+        std::unordered_set<RE::FormID> actors;
+		std::unordered_set<RE::BGSKeyword*> actor_keywords;
+		std::unordered_set<RE::BGSLocation*> locations;
+
+        std::string attach_node;
+		std::vector<std::string> hide_nodes; // TODO: implement
+
+		int delay;
+
+        AnimData() = default;
         explicit AnimData(AnimDataBlock& a_block);
     };
 
 	inline std::shared_mutex m_anim_data_;
-	inline std::unordered_map<AnimEvent,AnimData> anim_map;
+	inline std::unordered_map<AnimEvent,std::vector<AnimData>> anim_map;
     void Load();
 }

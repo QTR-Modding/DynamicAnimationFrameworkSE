@@ -9,6 +9,7 @@ namespace Presets {
 		T value;
 	public:
 		Field(const std::string& a_name) : name(a_name) {}
+		Field(const std::string& a_name, const T& a_default_value) : name(a_name), value(a_default_value) {}
 
 	    bool load(const BlockType& node);
         T& get() { return value; }

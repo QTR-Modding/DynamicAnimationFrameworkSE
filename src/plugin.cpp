@@ -1,16 +1,12 @@
+#include "Events.h"
+#include "Hooks.h"
 #include "logger.h"
-#include "Presets/PresetInterface.cpp"
+#include "Presets/PresetInterface.h"
 
-void OnMessage(SKSE::MessagingInterface::Message* message) {
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
+void OnMessage(SKSE::MessagingInterface::Message* message) {  // NOLINT(misc-use-internal-linkage)
     if (message->type == SKSE::MessagingInterface::kDataLoaded) {
-        // Start
-		logger::info("Data loaded message received.");
-    }
-    if (message->type == SKSE::MessagingInterface::kPostLoad) {
-		logger::info("Post load message received.");
-    }
-    if (message->type == SKSE::MessagingInterface::kDeleteGame) {
-		logger::info("delete game message received.");
+        Hooks::Install();
     }
     if (message->type == SKSE::MessagingInterface::kNewGame || message->type == SKSE::MessagingInterface::kPostLoadGame) {
         

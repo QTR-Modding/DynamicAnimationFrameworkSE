@@ -1,23 +1,80 @@
 #pragma once
+#include "CLibUtilsQTR/Tasker.hpp"
 
 namespace Hooks {
 
 	void Install();
+
+    template <typename Func, typename... Args>
+    void CallOriginalMethodDelayed(int delay, RE::TESObjectREFR* AoI, Func func, Args&&... args)
+    {
+        auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
+		auto smart = RE::NiPointer(AoI);
+
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+            [smart, func, args_tuple = std::move(args_tuple)]() mutable {
+                SKSE::GetTaskInterface()->AddTask(
+                    [smart, func, args_tuple = std::move(args_tuple)]() mutable {
+                        if (!smart) {
+                            return;
+						}
+                        std::apply([&]<typename... T0>(T0&&... unpacked) {
+                            std::invoke(func, std::forward<T0>(unpacked)...);
+                        }, std::move(args_tuple));
+
+                        if (auto ui = RE::UI::GetSingleton();
+                            ui->IsMenuOpen(RE::InventoryMenu::MENU_NAME) ||
+                            ui->IsMenuOpen(RE::BarterMenu::MENU_NAME) ||
+                            ui->IsMenuOpen(RE::ContainerMenu::MENU_NAME)) {
+                            RE::SendUIMessage::SendInventoryUpdateMessage(smart.get(), nullptr);
+                        }
+                    }
+                );
+            },
+            delay
+        );
+    }
+
+    template <typename Callable>
+    void CallLambdaDelayed(int delay, Callable&& func)
+    {
+        auto wrapper = std::forward<Callable>(func);
+        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+            [wrapper]() mutable {
+                SKSE::GetTaskInterface()->AddTask([wrapper = std::move(wrapper)]() mutable {
+                    wrapper();
+                });
+            },
+            delay
+        );
+    }
 
     struct DrawHook {
 		static void thunk(std::uint32_t a_timer);
         static inline REL::Relocation<decltype(thunk)> func;
 	};
 
+	// Source: https://github.com/RavenKZP/Immersive-Weapon-Switch/blob/main/src/Hooks.cpp
+    struct GenericEquipObjectHook {
+        static void InstallHook(SKSE::Trampoline& a_trampoline);
+        static void thunk(RE::ActorEquipManager* a_manager, RE::Actor* a_actor, RE::TESBoundObject* a_object,
+                          std::uint64_t a_unk);
+        static inline REL::Relocation<decltype(thunk)> func;
+    };
+
+    struct UnEquipObjectHook {
+        static void InstallHook(SKSE::Trampoline& a_trampoline);
+        static void thunk(RE::ActorEquipManager* a_manager, RE::Actor* a_actor, RE::TESBoundObject* a_object,
+                          std::uint64_t a_unk);
+        static inline REL::Relocation<decltype(thunk)> func;
+    };
+
     template <typename FormType>
     class ActivateHook : public FormType {
-        static bool Activate_Hook(RE::TESBoundObject* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3, RE::TESBoundObject* a_obj, std::int32_t a_targetCount);
+        static bool Activate_Hook(FormType* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3, RE::TESBoundObject* a_obj, std::int32_t a_targetCount);
         static inline REL::Relocation<decltype(&FormType::Activate)> _Activate;
     public:
-        static void install() {
-		    REL::Relocation<std::uintptr_t> _vtbl{ FormType::VTABLE[0] };
-		    _Activate = _vtbl.write_vfunc(0x37, Activate_Hook);
-        }
+        static void install();
     };
 
     // Credits: SkyrimThiago
@@ -85,10 +142,8 @@ namespace Hooks {
         static inline REL::Relocation<decltype(thunk)> _LoadAnimObject;
     };
 
-	inline std::map<RE::FormID,RE::NiPointer<RE::NiAVObject>> item_meshes;
-	inline RE::FormID item_mesh;
-    inline std::string attach_node;
-    inline RE::NiPointer<RE::NiAVObject> objectNode = nullptr;
+	using AttachNodeInfo = std::pair<RE::NiPointer<RE::NiAVObject>, std::string>;
+	inline std::unordered_map<RE::FormID,AttachNodeInfo> item_meshes;
 
     static void add_item_functor(RE::TESObjectREFR* a_this, RE::TESObjectREFR* a_object, int32_t a_count, bool a4, bool a5);
 	static inline REL::Relocation<decltype(add_item_functor)> add_item_functor_;
