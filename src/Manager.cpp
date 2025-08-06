@@ -7,7 +7,7 @@ bool Manager::PlayAnimation(RE::Actor* a_actor, const std::vector<Animation>& an
     if (RE::ActorHandlePtr actor; 
         RE::BSPointerHandleManagerInterface<RE::Actor>::GetSmartPointer(a_actor->GetHandle(),actor)) {
         Animator* animator = nullptr;
-        if (std::shared_lock lock (m_animators_); animators.contains(actor)) {
+        if (std::shared_lock lock(m_animators_); animators.contains(actor)) {
             animator = animators.at(actor);
         }
         if (!animator) {
