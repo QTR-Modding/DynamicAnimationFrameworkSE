@@ -40,9 +40,9 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
 		    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
 		}
         if (i < durations.size()) {
-            animations.emplace_back(a_idle, name,durations[i]);
+            animations.emplace_back(a_idle, a_idle ? "" : name,durations[i]);
         } else {
-            animations.emplace_back(a_idle, name,0);
+            animations.emplace_back(a_idle, a_idle ? "" : name,0);
         }
         ++i;
 	}
