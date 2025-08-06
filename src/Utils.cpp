@@ -30,52 +30,52 @@ const char* Utils::GetModelPath(RE::TESForm* a_form, [[maybe_unused]] RE::Actor*
         }
         case RE::FormType::Ammo: {
             const auto ammo = a_form->As<RE::TESAmmo>();
-			return ammo->GetModel();
+            return ammo->GetModel();
         }
         case RE::FormType::KeyMaster: {
             const auto key = a_form->As<RE::TESKey>();
             return key->GetModel();
-		}
+        }
         case RE::FormType::Misc: {
             const auto misc = a_form->As<RE::TESObjectMISC>();
             return misc->GetModel();
-		}
+        }
         case RE::FormType::Scroll: {
             const auto scroll = a_form->As<RE::ScrollItem>();
             return scroll->GetModel();
-		}
+        }
         case RE::FormType::AlchemyItem: {
             const auto alchemy = a_form->As<RE::AlchemyItem>();
             return alchemy->GetModel();
-		}
+        }
         case RE::FormType::Ingredient: {
             const auto ingredient = a_form->As<RE::IngredientItem>();
-			return ingredient->GetModel();
+            return ingredient->GetModel();
             }
         case RE::FormType::Book: {
             const auto book = a_form->As<RE::TESObjectBOOK>();
-			return book->GetModel();
+            return book->GetModel();
         }
         case RE::FormType::Note: {
-			const auto note = a_form->As<RE::BGSNote>();
-			return note->GetModel();
+            const auto note = a_form->As<RE::BGSNote>();
+            return note->GetModel();
         }
         case RE::FormType::SoulGem: {
-			const auto soulgem = a_form->As<RE::TESSoulGem>();
-			return soulgem->GetModel();
+            const auto soulgem = a_form->As<RE::TESSoulGem>();
+            return soulgem->GetModel();
         }
         case RE::FormType::Apparatus: {
-			const auto apparatus = a_form->As<RE::BGSApparatus>();
-			return apparatus->GetModel();
+            const auto apparatus = a_form->As<RE::BGSApparatus>();
+            return apparatus->GetModel();
         }
         case RE::FormType::Container: {
-			const auto container = a_form->As<RE::TESObjectCONT>();
-			return container->GetModel();
+            const auto container = a_form->As<RE::TESObjectCONT>();
+            return container->GetModel();
         }
         case RE::FormType::Door: {
             const auto door = a_form->As<RE::TESObjectDOOR>();
             return door->GetModel();
-		}
+        }
         case RE::FormType::Static: {
             const auto stat = a_form->As<RE::TESObjectSTAT>();
             return stat->GetModel();
