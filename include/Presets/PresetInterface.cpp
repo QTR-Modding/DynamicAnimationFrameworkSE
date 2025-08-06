@@ -95,7 +95,6 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     delay = 0;
 
     if (const auto a_delay = a_block.delay_int.get(); a_delay > 0) {
-        logger::info("asd");
         delay = a_delay;
     }
     else if (a_block.delay.get()) {
