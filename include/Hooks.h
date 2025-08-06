@@ -5,12 +5,6 @@ namespace Hooks {
 
 	void Install();
 
-    inline std::map<std::string_view,bool> menu_blocks = {
-         {RE::InventoryMenu::MENU_NAME, true},
-        {RE::ContainerMenu::MENU_NAME, true},
-        {RE::BarterMenu::MENU_NAME, true},
-    };
-
     template <typename Func, typename... Args>
     void CallOriginalMethodDelayed(int delay, RE::TESObjectREFR* AoI, Func func, Args&&... args)
     {
@@ -54,26 +48,6 @@ namespace Hooks {
             delay
         );
     }
-
-
-    template <typename MenuType>
-    RE::StandardItemData* GetSelectedItemData() {
-        if (menu_blocks.contains(MenuType::MENU_NAME) && menu_blocks.at(MenuType::MENU_NAME)) {
-            return nullptr;
-		}
-        if (const auto ui = RE::UI::GetSingleton()) {
-            if (const auto menu = ui->GetMenu<MenuType>()) {
-	            if (RE::ItemList* a_itemList = menu->GetRuntimeData().itemList) {
-		            if (auto* item = a_itemList->GetSelectedItem()) {
-			            return &item->data;
-		            }
-	            }
-            }
-        }
-		return nullptr;
-    }
-
-    RE::StandardItemData* GetSelectedItemDataInMenu(std::string& a_menuOut);
 
     struct DrawHook {
 		static void thunk(std::uint32_t a_timer);
@@ -168,10 +142,8 @@ namespace Hooks {
         static inline REL::Relocation<decltype(thunk)> _LoadAnimObject;
     };
 
-	inline std::map<RE::FormID,RE::NiPointer<RE::NiAVObject>> item_meshes;
-	inline RE::FormID item_mesh;
-    inline std::string attach_node;
-    inline RE::NiPointer<RE::NiAVObject> objectNode = nullptr;
+	using AttachNodeInfo = std::pair<RE::NiPointer<RE::NiAVObject>, std::string>;
+	inline std::unordered_map<RE::FormID,AttachNodeInfo> item_meshes;
 
     static void add_item_functor(RE::TESObjectREFR* a_this, RE::TESObjectREFR* a_object, int32_t a_count, bool a4, bool a5);
 	static inline REL::Relocation<decltype(add_item_functor)> add_item_functor_;

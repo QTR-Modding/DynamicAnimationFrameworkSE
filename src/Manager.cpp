@@ -1,4 +1,6 @@
 #include "Manager.h"
+#include "Hooks.h"
+#include "Utils.h"
 
 bool Manager::PlayAnimation(RE::Actor* a_actor, const std::vector<Animation>& anim_chain)
 {
@@ -34,9 +36,17 @@ int Manager::PlayAnimation(const Presets::AnimEvent a_animevent, RE::TESObjectRE
             !anim_data.animations.empty()) {
             
             if (PlayAnimation(actor,anim_data.animations)) {
+                if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
+                    if (const auto actor_id = a_actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
+                        RE::NiPointer<RE::NiAVObject> a_model;
+                        if (Utils::GetModel(a_form,a_model); a_model) {
+						    Hooks::item_meshes[actor_id] = {a_model,attach_node};
+                        }
+                    }
+
+				}
                 return anim_data.delay;
             }
-
         }
     }
     return 0;
@@ -187,8 +197,8 @@ int Manager::OnSell(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item)
 
 int Manager::OnMenuOpenClose(const std::string_view menu_name, const bool opened)
 {
-    auto player = RE::PlayerCharacter::GetSingleton();
-	auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, opened ? Presets::kOpen : Presets::kClose);
+    const auto player = RE::PlayerCharacter::GetSingleton();
+	const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, opened ? Presets::kOpen : Presets::kClose);
     return PlayAnimation(menuanimevent, player, nullptr);
 }
 
@@ -202,7 +212,7 @@ int Manager::OnItemHover(const std::string_view menu_name, const RE::StandardIte
         return PlayAnimation(menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject());
     }
     if (menuanimevent == Presets::AnimEvent::kMenuHoverBarter) {
-		auto handle = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()->GetTargetRefHandle();
+		const auto handle = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()->GetTargetRefHandle();
 		if (RE::LookupReferenceByHandle(handle,a_owner)) {
             return PlayAnimation(menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject());
 		}

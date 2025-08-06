@@ -93,7 +93,7 @@ namespace Presets {
 		std::unordered_set<RE::BGSLocation*> locations;
 
         std::string attach_node;
-		std::vector<std::string> hide_nodes;
+		std::vector<std::string> hide_nodes; // TODO: implement
 
 		int delay;
 

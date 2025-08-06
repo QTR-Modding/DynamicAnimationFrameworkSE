@@ -7,7 +7,6 @@ set(sources ${sources}
 	src/Hooks.cpp
 	src/MCP.cpp
  	src/Serialization.cpp
- 	src/Animations.cpp
  	src/Animator.cpp
  	include/Presets/PresetInterface.cpp
 )

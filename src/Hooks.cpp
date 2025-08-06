@@ -1,6 +1,8 @@
 #include "Hooks.h"
-#include "Animations.h"
 #include "Manager.h"
+#include "Utils.h"
+
+using namespace Utils;
 
 void Hooks::Install()
 {
@@ -29,8 +31,7 @@ void Hooks::Install()
 	const REL::Relocation<std::uintptr_t> function{REL::RelocationID(51019, 51897)};
     InventoryHoverHook::originalFunction = trampoline.write_call<5>(function.address() + REL::Relocate(0x114, 0x22c), InventoryHoverHook::thunk);
 
-	const REL::Relocation<std::uintptr_t> target{REL::RelocationID(42420, 43576),
-                                                   REL::Relocate(0x22A, 0x21F)};  // AnimationObjects::Load
+	const REL::Relocation<std::uintptr_t> target{REL::RelocationID(42420, 43576),REL::Relocate(0x22A, 0x21F)};  // AnimationObjects::Load
     AnimObjectHook::_LoadAnimObject = trampoline.write_call<5>(target.address(), AnimObjectHook::thunk);
 
 	const REL::Relocation<std::uintptr_t> target2{REL::RelocationID(75461, 77246)}; // BSGraphics::Renderer::End
@@ -48,25 +49,6 @@ void Hooks::Install()
 	ActivateHook<RE::TESObjectACTI>::install();
 	ActivateHook<RE::TESObjectLIGH>::install();
 	ActivateHook<RE::TESObjectTREE>::install();
-}
-
-RE::StandardItemData* Hooks::GetSelectedItemDataInMenu(std::string& a_menuOut)
-{
-    if (const auto ui = RE::UI::GetSingleton()) {
-	    if (ui->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
-			a_menuOut = RE::InventoryMenu::MENU_NAME;
-			return GetSelectedItemData<RE::InventoryMenu>();
-	    }
-		if (ui->IsMenuOpen(RE::ContainerMenu::MENU_NAME)) {
-			a_menuOut = RE::ContainerMenu::MENU_NAME;
-			return GetSelectedItemData<RE::ContainerMenu>();
-        }
-        if (ui->IsMenuOpen(RE::BarterMenu::MENU_NAME)) {
-			a_menuOut = RE::BarterMenu::MENU_NAME;
-            return GetSelectedItemData<RE::BarterMenu>();
-		}
-    }
-    return nullptr;
 }
 
 void Hooks::add_item_functor(RE::TESObjectREFR* a_this, RE::TESObjectREFR* a_object, int32_t a_count, bool a4, bool a5)
@@ -299,11 +281,11 @@ namespace {
         }
     }
 
-    RE::NiNode* GetAttachNode(RE::NiAVObject* animObjectMesh) {
+    RE::NiNode* GetAttachNode(RE::NiAVObject* animObjectMesh, const std::string& attach_node) {
         auto* root = animObjectMesh->AsFadeNode();
         RE::NiNode* defaultAttachNode = nullptr;
         if (root) {
-            if (auto* attachNode = root->GetObjectByName(Hooks::attach_node)) {
+            if (auto* attachNode = root->GetObjectByName(attach_node)) {
                 defaultAttachNode = attachNode->AsNode();
             }
         }
@@ -328,17 +310,18 @@ namespace {
         return func(original);
     }
 
-    RE::NiAVObject* GetContainerMesh(RE::NiAVObject* original, RE::NiAVObject* ContainerMesh) {
-        if (ContainerMesh == nullptr) {
+    RE::NiAVObject* GetVariableMesh(RE::NiAVObject* original, const Hooks::AttachNodeInfo& attach_node_info) {
+        const auto variableMesh = attach_node_info.first.get();
+        if (variableMesh == nullptr) {
             return nullptr;
         }
 
-        auto* node = GetAttachNode(original);
+        auto* node = GetAttachNode(original,attach_node_info.second);
 	    if (!node) {
 		    return nullptr;
 	    }
 
-        const auto geometries = GetAllGeometries(ContainerMesh);
+        const auto geometries = GetAllGeometries(variableMesh);
 
         for (auto* geom : geometries) {
             if (!geom) {
@@ -359,10 +342,11 @@ RE::NiAVObject* Hooks::AnimObjectHook::thunk(RE::TESModel* a_model, RE::BIPED_OB
 
     RE::NiAVObject* output = _LoadAnimObject(a_model, a_bipedObj, a_actor, a_biped, a_root);
     if (const auto animObject = adjust_pointer<RE::TESObjectANIO>(a_model->GetAsModelTextureSwap(), -0x20);
-        animObject) { 
-		if (item_meshes.contains(item_mesh)) {
-            if (auto* containerMesh = GetContainerMesh(output,item_meshes.at(item_mesh).get())) {
+        animObject) {
+        if (const auto actor_id = a_actor ? a_actor->GetFormID() : 0; item_meshes.contains(actor_id)) {
+            if (auto* containerMesh = GetVariableMesh(output,item_meshes.at(actor_id))) {
                 output = containerMesh;
+				item_meshes.erase(actor_id);
             }
 		}
     }
