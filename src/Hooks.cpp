@@ -101,7 +101,7 @@ void Hooks::DrawHook::thunk(std::uint32_t a_timer)
 template<typename RefType>
 void Hooks::MoveItemHooks<RefType>::pickUpObject(RefType * a_this, RE::TESObjectREFR * a_object, int32_t a_count, bool a_arg3, bool a_play_sound)
 {
-	if (!a_this || !a_object) {
+	if (!a_this || !a_object || a_count <= 0) {
 		return pick_up_object_(a_this, a_object, a_count, a_arg3, a_play_sound);
 	}
 
