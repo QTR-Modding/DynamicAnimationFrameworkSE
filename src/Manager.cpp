@@ -39,7 +39,7 @@ int Manager::PlayAnimation(const Presets::AnimEvent a_animevent, RE::TESObjectRE
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
                     if (const auto actor_id = a_actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
                         RE::NiPointer<RE::NiAVObject> a_model;
-                        if (Utils::GetModel(a_form,a_model); a_model) {
+                        if (Utils::GetModel(a_form, a_model); a_model) {
 						    Hooks::item_meshes[actor_id] = {a_model,attach_node};
                         }
                     }
