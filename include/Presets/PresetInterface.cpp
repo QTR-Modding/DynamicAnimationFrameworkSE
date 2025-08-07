@@ -1,5 +1,7 @@
 #include "Presets/PresetInterface.h"
-#include "CLibUtilsQTR/PresetHelpers/PresetHelpers.hpp"
+
+#include "Service.h"
+#include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
 
 
 namespace  {
@@ -51,9 +53,15 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
 
     for (const auto& type : a_block.event_type.get()) {
         if (type < kTotal && type > kNone) {
-            events.insert(static_cast<AnimEvent>(type));
+            events.insert(type);
         }
     }
+
+    if (const auto& type_custom = a_block.event_type_custom.get(); !type_custom.empty()) {
+        auto a_eventid = Service::AddCustomEvent(a_block.event_type_custom.get());
+        events.insert(a_eventid);
+    }
+
     for (const auto& keyword : a_block.keywords.get()) {
         CollectForms(keyword,keywords);
     }
@@ -149,6 +157,11 @@ Presets::AnimEvent Presets::GetMenuAnimEvent(const std::string_view menu_name, c
 }
 
 void Presets::Load() {
+
+
+    constexpr std::string_view formGroupsFolder = R"(Data\SKSE\Plugins\DAF\formGroups)";
+	PresetHelpers::TXT_Helpers::GatherForms(std::string(formGroupsFolder));
+
     constexpr std::string_view animDataFolder = R"(Data\SKSE\Plugins\DAF\animData)";
 
     if (!std::filesystem::exists(animDataFolder)) {

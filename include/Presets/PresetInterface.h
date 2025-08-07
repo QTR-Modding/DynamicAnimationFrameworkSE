@@ -5,14 +5,16 @@
 #include "boost/pfr/core.hpp"
 #include "CLibUtilsQTR/FormReader.hpp"
 #include "Animator.h"
+#include "DynamicAnimationFramework/API.h"
 
 namespace Presets {
 
     struct AnimDataBlock {
         Field<int,rapidjson::Value> priority = { "priority",0};
-        Field<std::vector<int>,rapidjson::Value> event_type = { "types" };
+        Field<std::vector<int>,rapidjson::Value> event_type = { "events" };
+        Field<std::string,rapidjson::Value> event_type_custom = { "events" };
 
-        Field<std::vector<std::string>,rapidjson::Value> anim_names = { "names" };
+        Field<std::vector<std::string>,rapidjson::Value> anim_names = { "animations" };
         Field<std::vector<int>,rapidjson::Value> durations = { "durations"};
 
         Field<std::vector<std::string>,rapidjson::Value> forms = { "forms" };
@@ -38,7 +40,7 @@ namespace Presets {
         }
     };
 
-    enum AnimEvent : std::uint8_t {
+    enum AnimEvent : DAF_API::AnimEventID {
 		kNone = 0,
         kActivate,
 		kItemAdd,
@@ -82,7 +84,7 @@ namespace Presets {
 		std::vector<Animation> animations; // Animation Chain: <name, duration>
 
         int priority;
-		std::unordered_set<AnimEvent> events;
+		std::unordered_set<DAF_API::AnimEventID> events;
 
         std::unordered_set<RE::TESForm*> forms;
 		std::unordered_set<RE::FormType> form_types;
@@ -102,6 +104,6 @@ namespace Presets {
     };
 
 	inline std::shared_mutex m_anim_data_;
-	inline std::unordered_map<AnimEvent,std::vector<AnimData>> anim_map;
+	inline std::unordered_map<DAF_API::AnimEventID,std::vector<AnimData>> anim_map;
     void Load();
 }

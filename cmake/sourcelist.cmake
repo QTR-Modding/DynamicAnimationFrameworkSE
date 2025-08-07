@@ -8,5 +8,6 @@ set(sources ${sources}
 	src/MCP.cpp
  	src/Serialization.cpp
  	src/Animator.cpp
+ 	src/Service.cpp
  	include/Presets/PresetInterface.cpp
 )

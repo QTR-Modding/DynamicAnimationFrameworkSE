@@ -2,7 +2,7 @@
 #include "Hooks.h"
 #include "Utils.h"
 
-bool Manager::PlayAnimation(RE::Actor* a_actor, const std::vector<Animation>& anim_chain)
+bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain)
 {
     if (RE::ActorHandlePtr actor; 
         RE::BSPointerHandleManagerInterface<RE::Actor>::GetSmartPointer(a_actor->GetHandle(),actor)) {
@@ -16,16 +16,16 @@ bool Manager::PlayAnimation(RE::Actor* a_actor, const std::vector<Animation>& an
             animators[actor] = animator;
         }
 
-        if (!animator->isRunning()) {
-            animator->Add2Q(anim_chain);
+        return animator->Add2Q(anim_chain);
+        /*if (!animator->isRunning()) {
             return true;
-        }
+        }*/
     }
 
     return false;
 }
 
-int Manager::PlayAnimation(const Presets::AnimEvent a_animevent, RE::TESObjectREFR* a_actor, RE::TESForm* a_form)
+int Manager::PlayAnimation(DAF_API::AnimEventID a_animevent, RE::TESObjectREFR* a_actor, RE::TESForm* a_form)
 {
     if (const auto actor = a_actor->As<RE::Actor>()) {
         if (!ActorCheck(actor)) {
@@ -35,7 +35,7 @@ int Manager::PlayAnimation(const Presets::AnimEvent a_animevent, RE::TESObjectRE
         if (const auto anim_data = GetAnimData(a_animevent,{.actor_id= a_actor->GetFormID(),.form= a_form}); 
             !anim_data.animations.empty()) {
             
-            if (PlayAnimation(actor,anim_data.animations)) {
+            if (PlayAnimation(actor,{a_animevent,anim_data.animations})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
                     if (const auto actor_id = a_actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
                         RE::NiPointer<RE::NiAVObject> a_model;
@@ -71,7 +71,7 @@ bool Manager::ActorHandleEqual::operator(
     return lhs->GetFormID() == rhs->GetFormID();
 }
 
-Presets::AnimData Manager::GetAnimData(const Presets::AnimEvent a_animevent, const Filter& filter)
+Presets::AnimData Manager::GetAnimData(DAF_API::AnimEventID a_animevent, const Filter& filter)
 {
     std::map<int,Presets::AnimData*> result;
 
