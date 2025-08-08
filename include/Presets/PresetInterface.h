@@ -69,6 +69,7 @@ namespace Presets {
 		kMenuCloseMap,
 		kMenuOpenJournal,
 		kMenuCloseJournal,
+		//kPOVToggle,
 		kTotal
 	};
 
