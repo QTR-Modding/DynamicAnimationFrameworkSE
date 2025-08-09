@@ -2,6 +2,7 @@
 #include <queue>
 #include <shared_mutex>
 #include "CLibUtilsQTR/Ticker.hpp"
+#include "DynamicAnimationFramework/API.h"
 
 struct Animation {
 	RE::TESIdleForm* a_idle=nullptr;
@@ -52,7 +53,7 @@ public RE::BSTEventSink<RE::BSAnimationGraphEvent>
 			return;
 		}
 
-		auto [a_idle, a_anim, t_wait_ms] = m_AnimQueue.front();
+		auto [a_idle, a_anim, t_wait_ms] = m_AnimQueue.front().first;
 		m_AnimQueue.pop();
 		UpdateInterval(std::chrono::milliseconds(t_wait_ms));
 		if (a_idle) {
@@ -78,7 +79,7 @@ public RE::BSTEventSink<RE::BSAnimationGraphEvent>
 		}
     }
 
-	std::queue<Animation> m_AnimQueue;
+	std::queue<std::pair<Animation,DAF_API::AnimEventID>> m_AnimQueue;
     std::shared_mutex animQ_mutex;
 
 	RE::ActorHandlePtr actor;
@@ -91,19 +92,25 @@ public:
         Stop();
 	    UpdateInterval(std::chrono::milliseconds(0));
 	    std::unique_lock lock(animQ_mutex);
-	    m_AnimQueue = std::queue<Animation>();
+	    m_AnimQueue = std::queue<std::pair<Animation,DAF_API::AnimEventID>>();
     }
 
-	void Add2Q(const std::vector<Animation>& animations) {
+	bool Add2Q(const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain) {
+		auto& [anim_event_id, animations]= anim_chain;
 		if (animations.empty()) {
-			return;
+			return false;
 		}
 
+
         std::unique_lock lock(animQ_mutex);
+		if (!m_AnimQueue.empty() && m_AnimQueue.front().second == anim_event_id) {
+			return false;
+		}
 		for (const auto& anim : animations) {
-			m_AnimQueue.push(anim);
+			m_AnimQueue.push({anim,anim_event_id});
         }
 
 		Start();
+        return true;
 	}
 };

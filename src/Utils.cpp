@@ -21,76 +21,62 @@ RE::StandardItemData* Utils::GetSelectedItemDataInMenu(std::string& a_menuOut) {
 const char* Utils::GetModelPath(RE::TESForm* a_form, [[maybe_unused]] RE::Actor* a_actor) {
     switch (a_form->GetFormType()) {
         case RE::FormType::Weapon: {
-            const auto form = a_form->As<RE::TESObjectWEAP>();
-            return form->GetModel();
+            return a_form->As<RE::TESObjectWEAP>()->GetModel();
         }
         case RE::FormType::Armor: {
-            const auto armor = a_form->As<RE::TESObjectARMO>();
-            return armor->worldModels->GetModel();
+            return a_form->As<RE::TESObjectARMO>()->worldModels->GetModel();
         }
         case RE::FormType::Ammo: {
-            const auto ammo = a_form->As<RE::TESAmmo>();
-            return ammo->GetModel();
+            return a_form->As<RE::TESAmmo>()->GetModel();
         }
         case RE::FormType::KeyMaster: {
-            const auto key = a_form->As<RE::TESKey>();
-            return key->GetModel();
+            return a_form->As<RE::TESKey>()->GetModel();
         }
         case RE::FormType::Misc: {
-            const auto misc = a_form->As<RE::TESObjectMISC>();
-            return misc->GetModel();
+            return a_form->As<RE::TESObjectMISC>()->GetModel();
         }
         case RE::FormType::Scroll: {
-            const auto scroll = a_form->As<RE::ScrollItem>();
-            return scroll->GetModel();
+            return a_form->As<RE::ScrollItem>()->GetModel();
         }
         case RE::FormType::AlchemyItem: {
-            const auto alchemy = a_form->As<RE::AlchemyItem>();
-            return alchemy->GetModel();
+            return a_form->As<RE::AlchemyItem>()->GetModel();
         }
         case RE::FormType::Ingredient: {
-            const auto ingredient = a_form->As<RE::IngredientItem>();
-            return ingredient->GetModel();
+            return a_form->As<RE::IngredientItem>()->GetModel();
             }
         case RE::FormType::Book: {
-            const auto book = a_form->As<RE::TESObjectBOOK>();
-            return book->GetModel();
+            return a_form->As<RE::TESObjectBOOK>()->GetModel();
         }
         case RE::FormType::Note: {
-            const auto note = a_form->As<RE::BGSNote>();
-            return note->GetModel();
+            return a_form->As<RE::BGSNote>()->GetModel();
         }
         case RE::FormType::SoulGem: {
-            const auto soulgem = a_form->As<RE::TESSoulGem>();
-            return soulgem->GetModel();
+            return a_form->As<RE::TESSoulGem>()->GetModel();
         }
         case RE::FormType::Apparatus: {
-            const auto apparatus = a_form->As<RE::BGSApparatus>();
-            return apparatus->GetModel();
+            return a_form->As<RE::BGSApparatus>()->GetModel();
         }
         case RE::FormType::Container: {
-            const auto container = a_form->As<RE::TESObjectCONT>();
-            return container->GetModel();
+            return a_form->As<RE::TESObjectCONT>()->GetModel();
         }
         case RE::FormType::Door: {
-            const auto door = a_form->As<RE::TESObjectDOOR>();
-            return door->GetModel();
+            return a_form->As<RE::TESObjectDOOR>()->GetModel();
         }
         case RE::FormType::Static: {
-            const auto stat = a_form->As<RE::TESObjectSTAT>();
-            return stat->GetModel();
+            return a_form->As<RE::TESObjectSTAT>()->GetModel();
         }
         case RE::FormType::Activator: {
-            const auto activator = a_form->As<RE::TESObjectACTI>();
-            return activator->GetModel();
+            return a_form->As<RE::TESObjectACTI>()->GetModel();
         }
         case RE::FormType::Light: {
-            const auto light = a_form->As<RE::TESObjectLIGH>();
-            return light->GetModel();
+            return a_form->As<RE::TESObjectLIGH>()->GetModel();
         }
         case RE::FormType::Tree: {
-            const auto tree = a_form->As<RE::TESObjectTREE>();
-            return tree->GetModel();
+            return a_form->As<RE::TESObjectTREE>()->GetModel();
+        }
+        case RE::FormType::Reference: {
+			const auto ref = a_form->AsReference();
+			return GetModelPath(ref->GetBaseObject());
         }
         default:
 			break;

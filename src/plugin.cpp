@@ -7,6 +7,7 @@
 void OnMessage(SKSE::MessagingInterface::Message* message) {  // NOLINT(misc-use-internal-linkage)
     if (message->type == SKSE::MessagingInterface::kDataLoaded) {
         Hooks::Install();
+        Presets::Load();
     }
     if (message->type == SKSE::MessagingInterface::kNewGame || message->type == SKSE::MessagingInterface::kPostLoadGame) {
         
@@ -20,7 +21,6 @@ SKSEPluginLoad(const SKSE::LoadInterface *skse) {
     SKSE::Init(skse);
     SKSE::GetMessagingInterface()->RegisterListener(OnMessage);
 
-    Presets::Load();
 
     return true;
 }

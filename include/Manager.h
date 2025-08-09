@@ -7,8 +7,7 @@
 class Manager : public clib_util::singleton::ISingleton<Manager>
 {
 
-	bool PlayAnimation(RE::Actor* a_actor, const std::vector<Animation>& anim_chain);
-	int PlayAnimation(Presets::AnimEvent a_animevent, RE::TESObjectREFR* a_actor, RE::TESForm* a_form);
+	bool PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain);
 
     static bool ActorCheck(const RE::Actor* a_actor);
 
@@ -28,12 +27,13 @@ class Manager : public clib_util::singleton::ISingleton<Manager>
 	    RE::TESForm* form = nullptr;
 	};
 
-    static Presets::AnimData GetAnimData(Presets::AnimEvent a_animevent, const Filter& filter);
+    static Presets::AnimData GetAnimData(DAF_API::AnimEventID a_animevent, const Filter& filter);
 
 public:
 
 	void PauseAnimators();
 	void ResumeAnimators();
+	int PlayAnimation(DAF_API::AnimEventID a_animevent, RE::TESObjectREFR* a_actor, RE::TESForm* a_form);
 
 	int OnActivate(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
 	int OnPickup(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
