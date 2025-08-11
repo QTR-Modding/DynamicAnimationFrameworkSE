@@ -14,7 +14,8 @@
     "skyprompt-api",
     "directxtk",
     "skse-mcp",
-    "boost-pfr"
+    "boost-pfr",
+    "daf-api"
   ],
   "overrides": [
     {
