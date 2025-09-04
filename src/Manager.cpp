@@ -1,17 +1,18 @@
 #include "Manager.h"
 #include "Hooks.h"
 #include "Utils.h"
+#include "Animator.h"
 
 bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain)
 {
     if (RE::ActorHandlePtr actor; 
         RE::BSPointerHandleManagerInterface<RE::Actor>::GetSmartPointer(a_actor->GetHandle(),actor)) {
-        Animator* animator = nullptr;
+        MyAnimator* animator = nullptr;
         if (std::shared_lock lock(m_animators_); animators.contains(actor)) {
             animator = animators.at(actor);
         }
         if (!animator) {
-            animator = new Animator(actor);
+            animator = new MyAnimator(actor);
             std::unique_lock lock(m_animators_);
             animators[actor] = animator;
         }
@@ -34,7 +35,7 @@ int Manager::PlayAnimation(DAF_API::AnimEventID a_animevent, RE::TESObjectREFR* 
 
         if (const auto anim_data = GetAnimData(a_animevent,{.actor_id= a_actor->GetFormID(),.form= a_form}); 
             !anim_data.animations.empty()) {
-            
+
             if (PlayAnimation(actor,{a_animevent,anim_data.animations})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
                     if (const auto actor_id = a_actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {

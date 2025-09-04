@@ -1,5 +1,4 @@
 #include "Presets/PresetInterface.h"
-
 #include "Service.h"
 #include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
 
@@ -25,7 +24,6 @@ namespace  {
                 logger::warn("Failed to get form for string: {}",form_string);
             }
         }
-
     }
 }
 
@@ -38,9 +36,9 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
 	size_t i = 0;
     for (const auto& name : names) {
 		RE::TESIdleForm* a_idle = nullptr;
-		if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0){
-		    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
-		}
+		//if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0){
+		//    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
+		//}
         if (i < durations.size()) {
             animations.emplace_back(a_idle, a_idle ? "" : name,durations[i]);
         } else {

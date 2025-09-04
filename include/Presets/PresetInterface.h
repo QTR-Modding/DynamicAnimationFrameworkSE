@@ -1,10 +1,12 @@
 #pragma once
 #include <shared_mutex>
 #include <unordered_set>
-#include "Config.h"
 #include "boost/pfr/core.hpp"
 #include "CLibUtilsQTR/FormReader.hpp"
+#include "CLibUtilsQTR/PresetHelpers/Config.hpp"
+#include "DynamicAnimationFramework/API.hpp"
 #include "Animator.h"
+
 
 namespace Presets {
 
@@ -81,7 +83,7 @@ namespace Presets {
 	AnimEvent GetMenuAnimEvent(std::string_view menu_name, MenuAnimEventType a_type);
 
     struct AnimData {
-		std::vector<Animation> animations; // Animation Chain: <name, duration>
+		std::vector<Animation> animations;
 
         int priority;
 		std::unordered_set<DAF_API::AnimEventID> events;

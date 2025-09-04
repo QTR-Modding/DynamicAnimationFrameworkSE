@@ -1,8 +1,8 @@
 #pragma once
 #include <shared_mutex>
-#include "Animator.h"
 #include "ClibUtil/singleton.hpp"
 #include "Presets/PresetInterface.h"
+#include "Animator.h"
 
 class Manager : public clib_util::singleton::ISingleton<Manager>
 {
@@ -20,7 +20,7 @@ class Manager : public clib_util::singleton::ISingleton<Manager>
     };
 
     std::shared_mutex m_animators_;
-	std::unordered_map<RE::ActorHandlePtr,Animator*,ActorHandleHash,ActorHandleEqual> animators;
+	std::unordered_map<RE::ActorHandlePtr,MyAnimator*,ActorHandleHash,ActorHandleEqual> animators;
 
 	struct Filter {
 	    RE::FormID actor_id;
