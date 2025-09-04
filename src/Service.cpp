@@ -26,7 +26,7 @@ DAF_API::AnimEventID Service::AddCustomEvent(const std::string& a_event_name) {
     if (custom_events.contains(a_event_name)) {
         return custom_events.at(a_event_name);
 	}
-    DAF_API::AnimEventID new_id = ++custom_event;
+    const DAF_API::AnimEventID new_id = ++custom_event;
     custom_events[a_event_name] = new_id;
 	return new_id;
 }

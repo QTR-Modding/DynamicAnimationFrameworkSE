@@ -11,9 +11,7 @@
     "rapidjson",
     "clib-util",
     "clib-utils-qtr",
-    "skyprompt-api",
     "directxtk",
-    "skse-mcp",
     "boost-pfr",
     "daf-api"
   ],
