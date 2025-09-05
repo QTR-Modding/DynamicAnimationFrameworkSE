@@ -3,6 +3,16 @@
 #include "Utils.h"
 #include "Animator.h"
 
+namespace {
+    // Credits: shad0wshayd3, https://next.nexusmods.com/profile/shad0wshayd3?gameId=1704
+    void OpenJournalMenu(bool unk)
+    {
+        using func_t = decltype(&OpenJournalMenu);
+        const REL::Relocation<func_t> func{ RELOCATION_ID(52428, 53327) };
+        return func(unk);
+    }
+}
+
 bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain)
 {
     if (RE::ActorHandlePtr actor; 
@@ -53,6 +63,48 @@ int Manager::PlayAnimation(DAF_API::AnimEventID a_animevent, RE::TESObjectREFR* 
     return 0;
 }
 
+void Manager::SetMenuQueued(const std::string_view menu_name, const bool for_open)
+{
+	queued_menus[menu_name] = for_open;
+}
+
+void Manager::UnSetMenuQueued(const std::string_view menu_name)
+{
+	queued_menus.erase(menu_name);
+}
+
+bool Manager::IsMenuQueued(const std::string_view menu_name) const
+{
+    return queued_menus.contains(menu_name);
+}
+
+bool Manager::IsMenuQueued(const std::string_view menu_name, const bool for_open) const
+{
+	return queued_menus.contains(menu_name) && queued_menus.at(menu_name) == for_open;
+}
+
+void Manager::OpenCloseMenu(const std::string_view menu_name, const bool open)
+{
+    const auto a_type = open ? RE::UI_MESSAGE_TYPE::kShow:RE::UI_MESSAGE_TYPE::kHide;
+
+    if (menu_name == RE::JournalMenu::MENU_NAME) {
+        if (open) {
+			OpenJournalMenu(false);
+            return;
+        }
+    }
+
+    if (menu_name == RE::InventoryMenu::MENU_NAME) {
+        if (!open) {
+            RE::UIMessageQueue::GetSingleton()->AddMessage(
+                        RE::TweenMenu::MENU_NAME, a_type,nullptr);
+        }
+    }
+
+    RE::UIMessageQueue::GetSingleton()->AddMessage(
+                    menu_name, a_type,nullptr);
+}
+
 bool Manager::ActorCheck(const RE::Actor* a_actor) {
     if (!a_actor->Is3DLoaded()) {
         return false;
@@ -72,7 +124,7 @@ bool Manager::ActorHandleEqual::operator(
     return lhs->GetFormID() == rhs->GetFormID();
 }
 
-Presets::AnimData Manager::GetAnimData(DAF_API::AnimEventID a_animevent, const Filter& filter)
+Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, const Filter& filter)
 {
     std::map<int,Presets::AnimData*> result;
 

@@ -184,15 +184,24 @@ RE::ObjectRefHandle* Hooks::MoveItemHooks<RefType>::RemoveItem(RefType * a_this,
 template<typename MenuType>
 RE::UI_MESSAGE_RESULTS Hooks::MenuHook<MenuType>::ProcessMessage_Hook(RE::UIMessage& a_message)
 {
-	const auto msg_type = static_cast<int>(a_message.type.get());
-	if (msg_type != 3 && msg_type != 1) {
-		return _ProcessMessage(this, a_message);
-	}
+    bool is_opening;
+
+    {
+	    const auto msg_type = static_cast<int>(a_message.type.get());
+
+	    is_opening = msg_type == 1;
+        const bool is_closing = msg_type == 3;
+
+        if (!is_opening && !is_closing) {
+		    return _ProcessMessage(this, a_message);
+	    }
+        
+    }
 
     if (menu_blocks.contains(MenuType::MENU_NAME)) {
           clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-            [msg_type] {
-		        menu_blocks.at(MenuType::MENU_NAME) = msg_type == 3;
+            [is_opening] {
+		        menu_blocks.at(MenuType::MENU_NAME) = !is_opening;
             },
             500
 		);
@@ -200,35 +209,39 @@ RE::UI_MESSAGE_RESULTS Hooks::MenuHook<MenuType>::ProcessMessage_Hook(RE::UIMess
 
 	if (const std::string_view menuname = MenuType::MENU_NAME; a_message.menu==menuname) {
 
-	    RE::TESObjectREFRPtr refr;
-        RE::ContainerMenu::ContainerMode container_mode = RE::ContainerMenu::ContainerMode::kLoot;
-	    if (menuname == RE::ContainerMenu::MENU_NAME) {
-            if (LookupReferenceByHandle(RE::ContainerMenu::GetTargetRefHandle(), refr)) {
-                container_mode = RE::ContainerMenu::GetContainerMode();
-            }
+		const auto manager = Manager::GetSingleton();
+
+        if (manager->IsMenuQueued(menuname)) {
+			manager->UnSetMenuQueued(menuname);
+			return _ProcessMessage(this, a_message);
         }
-        if (const auto delay = Manager::GetSingleton()->OnMenuOpenClose(menuname,msg_type==1); delay > 0) {
-              clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-                [menuname, msg_type,refr,container_mode] {
-                    if (msg_type == 1 && menuname == RE::ContainerMenu::MENU_NAME && refr.get()) {
+
+        if (const auto delay = manager->OnMenuOpenClose(menuname,is_opening); is_opening && delay > 0) {
+	        RE::TESObjectREFRPtr refr;
+            RE::ContainerMenu::ContainerMode container_mode = RE::ContainerMenu::ContainerMode::kLoot;
+            if (menuname == RE::ContainerMenu::MENU_NAME) {
+                if (LookupReferenceByHandle(RE::ContainerMenu::GetTargetRefHandle(), refr)) {
+                    container_mode = RE::ContainerMenu::GetContainerMode();
+                }
+            }
+            clib_utilsQTR::Tasker::GetSingleton()->PushTask(
+                [menuname, is_opening, refr, container_mode] {
+                    const auto a_manager = Manager::GetSingleton();
+                    a_manager->SetMenuQueued(menuname, is_opening);
+
+                    if (is_opening && menuname == RE::ContainerMenu::MENU_NAME && refr.get()) {
                         refr->OpenContainer(static_cast<std::int32_t>(container_mode));
                     }
                     else {
-                        RE::UIMessageQueue::GetSingleton()->AddMessage(
-                            menuname,msg_type == 1 ? RE::UI_MESSAGE_TYPE::kShow:RE::UI_MESSAGE_TYPE::kHide,nullptr);
+	                    a_manager->OpenCloseMenu(menuname, is_opening);
                     }
                 },
                 delay
             );
 
-            RE::UIMessageQueue::GetSingleton()->AddMessage(
-                menuname,msg_type == 1 ? RE::UI_MESSAGE_TYPE::kHide:RE::UI_MESSAGE_TYPE::kShow,nullptr);
-            if (menuname == RE::InventoryMenu::MENU_NAME) {
-                RE::UIMessageQueue::GetSingleton()->AddMessage(
-                    RE::TweenMenu::MENU_NAME,msg_type == 1 ? RE::UI_MESSAGE_TYPE::kHide:RE::UI_MESSAGE_TYPE::kShow,nullptr);
-            }
+            manager->OpenCloseMenu(menuname, !is_opening);
 
-			return RE::UI_MESSAGE_RESULTS::kHandled;
+            return RE::UI_MESSAGE_RESULTS::kHandled;
         }
 	}
     return _ProcessMessage(this, a_message);
