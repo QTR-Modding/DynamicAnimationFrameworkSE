@@ -29,11 +29,19 @@ class Manager : public clib_util::singleton::ISingleton<Manager>
 
     static Presets::AnimData GetAnimData(DAF_API::AnimEventID a_animevent, const Filter& filter);
 
+	std::map<std::string_view,bool> queued_menus;
+
 public:
 
 	void PauseAnimators();
 	void ResumeAnimators();
 	int PlayAnimation(DAF_API::AnimEventID a_animevent, RE::TESObjectREFR* a_actor, RE::TESForm* a_form);
+
+    void SetMenuQueued(std::string_view menu_name, bool for_open);
+	void UnSetMenuQueued(std::string_view menu_name);
+	bool IsMenuQueued(std::string_view menu_name) const;
+	bool IsMenuQueued(std::string_view menu_name, bool for_open) const;
+    static void OpenCloseMenu(std::string_view menu_name, bool open);
 
 	int OnActivate(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
 	int OnPickup(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
