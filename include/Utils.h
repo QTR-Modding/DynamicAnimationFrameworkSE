@@ -33,7 +33,7 @@ namespace Utils {
 
 namespace ModCompatibility {
     struct ModInfo {
-        explicit ModInfo(const std::string& a_modName) : name(a_modName) {}
+        explicit ModInfo(std::string a_modName) : name(std::move(a_modName)) {}
         bool IsInstalled();
     private:
         std::string name;
