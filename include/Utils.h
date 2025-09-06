@@ -30,3 +30,16 @@ namespace Utils {
     const char* GetModelPath(RE::TESForm* a_form, RE::Actor* a_actor=nullptr);
     void GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out);
 }
+
+namespace ModCompatibility {
+    struct ModInfo {
+        explicit ModInfo(const std::string& a_modName) : name(a_modName) {}
+        bool IsInstalled();
+    private:
+        std::string name;
+        bool        isLoaded = false;
+		bool is_checked = false;
+	};
+
+    inline auto QuestJournalOverhaul = ModInfo("QuestJournalOverhaul");
+}
