@@ -38,7 +38,6 @@ bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEve
 
 int Manager::PlayAnimation(AnimEventInfo a_info)
 {
-
     if (const auto actor = a_info.a_actor->As<RE::Actor>()) {
         if (!ActorCheck(actor)) {
             return 0;
@@ -53,11 +52,11 @@ int Manager::PlayAnimation(AnimEventInfo a_info)
                         // ReSharper disable once CppTooWideScopeInitStatement
                         RE::NiPointer<RE::NiAVObject> a_model;
                         if (Utils::GetModel(a_info.a_item, a_model); a_model) {
-						    Hooks::item_meshes[actor_id] = {a_model, attach_node};
+                            Hooks::item_meshes[actor_id] = {a_model, attach_node};
                         }
                     }
 
-				}
+                }
                 return anim_data.delay;
             }
         }
@@ -67,12 +66,12 @@ int Manager::PlayAnimation(AnimEventInfo a_info)
 
 void Manager::SetMenuQueued(const std::string_view menu_name, const bool for_open)
 {
-	queued_menus[menu_name] = for_open;
+    queued_menus[menu_name] = for_open;
 }
 
 void Manager::UnSetMenuQueued(const std::string_view menu_name)
 {
-	queued_menus.erase(menu_name);
+    queued_menus.erase(menu_name);
 }
 
 bool Manager::IsMenuQueued(const std::string_view menu_name) const
@@ -82,7 +81,7 @@ bool Manager::IsMenuQueued(const std::string_view menu_name) const
 
 bool Manager::IsMenuQueued(const std::string_view menu_name, const bool for_open) const
 {
-	return queued_menus.contains(menu_name) && queued_menus.at(menu_name) == for_open;
+    return queued_menus.contains(menu_name) && queued_menus.at(menu_name) == for_open;
 }
 
 void Manager::OpenCloseMenu(const std::string_view menu_name, const bool open)
@@ -91,7 +90,7 @@ void Manager::OpenCloseMenu(const std::string_view menu_name, const bool open)
 
     if (menu_name == RE::JournalMenu::MENU_NAME) {
         if (open) {
-			OpenJournalMenu(false);
+            OpenJournalMenu(false);
             return;
         }
     }
@@ -128,8 +127,6 @@ bool Manager::ActorHandleEqual::operator(
 
 Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, const Filter& filter)
 {
-    std::map<int,Presets::AnimData*> result;
-
     const auto filter_actorid = filter.actor_id;
     const auto filter_actor = RE::TESForm::LookupByID<RE::Actor>(filter.actor_id);
     const auto filter_actor_kw = filter_actor ? filter_actor->As<RE::BGSKeywordForm>() : nullptr;
@@ -138,61 +135,100 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
     const auto filter_formtype = filter_base ? filter_base->GetFormType() : RE::FormType::None;
     const auto filter_target = filter.form ? filter.form->AsReference() : nullptr;
 
+    // Precompute keywords once
+    std::vector<RE::BGSKeyword*> form_kws;
+    if (filter_form_kw) {
+        filter_form_kw->ForEachKeyword([&form_kws](RE::BGSKeyword* a_kw){ form_kws.push_back(a_kw); return RE::BSContainer::ForEachResult::kContinue; });
+    }
+    std::vector<RE::BGSKeyword*> actor_kws;
+    if (filter_actor_kw) {
+        filter_actor_kw->ForEachKeyword([&actor_kws](RE::BGSKeyword* a_kw){ actor_kws.push_back(a_kw); return RE::BSContainer::ForEachResult::kContinue; });
+    }
+    RE::BGSLocation* current_loc = filter_actor ? filter_actor->GetCurrentLocation() : nullptr;
+
+    Presets::AnimData* best = nullptr;
+    int best_priority = std::numeric_limits<int>::max();
+
     if (std::shared_lock lock(Presets::m_anim_data_); Presets::anim_map.contains(a_animevent)) {
         for (auto& anim_data : Presets::anim_map.at(a_animevent)) {
             if (!anim_data.form_types.empty() && !anim_data.form_types.contains(filter_formtype)) {
                 continue;
             }
+            if (!anim_data.exclude_form_types.empty() && anim_data.exclude_form_types.contains(filter_formtype)) {
+                continue;
+            }
+            // actor include / exclude by ID
             if (!anim_data.actors.empty() && !anim_data.actors.contains(filter_actorid)) {
                 continue;
             }
+            if (!anim_data.exclude_actors.empty() && anim_data.exclude_actors.contains(filter_actorid)) {
+                continue;
+            }
+            // forms include / exclude
             if (!anim_data.forms.empty() && !anim_data.forms.contains(filter_base)) {
                 continue;
             }
+            if (!anim_data.exclude_forms.empty() && anim_data.exclude_forms.contains(filter_base)) {
+                continue;
+            }
+            // form keywords include / exclude
             if (!anim_data.keywords.empty()) {
-                std::vector<RE::BGSKeyword*> kws;
-                if (filter_form_kw) {
-                    filter_form_kw->ForEachKeyword([&kws](RE::BGSKeyword* a_kw){kws.push_back(a_kw);return RE::BSContainer::ForEachResult::kContinue;});
-                }
-                if (!std::ranges::any_of(kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.keywords.contains(a_kw);})){ 
+                if (!std::ranges::any_of(form_kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.keywords.contains(a_kw);})){ 
                     continue;
                 }
             }
-            if (!anim_data.actor_keywords.empty()) {
-                std::vector<RE::BGSKeyword*> kws;
-                if (filter_actor_kw) {
-                    filter_actor_kw->ForEachKeyword([&kws](RE::BGSKeyword* a_kw){kws.push_back(a_kw);return RE::BSContainer::ForEachResult::kContinue;});
+            if (!anim_data.exclude_keywords.empty()) {
+                if (std::ranges::any_of(form_kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.exclude_keywords.contains(a_kw);})){ 
+                    continue;
                 }
-                if (!std::ranges::any_of(kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.actor_keywords.contains(a_kw);})){ 
+            }
+            // actor keywords include / exclude
+            if (!anim_data.actor_keywords.empty()) {
+                if (!std::ranges::any_of(actor_kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.actor_keywords.contains(a_kw);})){ 
+                    continue;
+                }
+            }
+            if (!anim_data.exclude_actor_keywords.empty()) {
+                if (std::ranges::any_of(actor_kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.exclude_actor_keywords.contains(a_kw);})){ 
                     continue;
                 }
             }
 
-            // Actor perk filter: evaluate provided perk conditions; do not require the actor to own the perk
+            // conditions include / exclude
             if (!anim_data.conditions.empty() && filter_actor &&
                 !std::ranges::any_of(anim_data.conditions, [&filter_actor,&filter_target](const RE::BGSPerk* a_perk) {
                     return a_perk && a_perk->perkConditions.IsTrue(filter_actor,filter_target);
             })) {
                 continue;
             }
+            if (!anim_data.exclude_conditions.empty() && filter_actor &&
+                std::ranges::any_of(anim_data.exclude_conditions, [&filter_actor,&filter_target](const RE::BGSPerk* a_perk) {
+                    return a_perk && a_perk->perkConditions.IsTrue(filter_actor,filter_target);
+            })) {
+                continue;
+            }
 
+            // locations include / exclude
             if (!anim_data.locations.empty()) {
-                RE::BGSLocation* a_loc = nullptr;
-                if (filter_actor) {
-                    a_loc = filter_actor->GetCurrentLocation();
+                if (!anim_data.locations.contains(current_loc)) {
+                    continue;
                 }
-                if (!anim_data.locations.contains(a_loc)) {
+            }
+            if (!anim_data.exclude_locations.empty()) {
+                if (anim_data.exclude_locations.contains(current_loc)) {
                     continue;
                 }
             }
 
-            result[anim_data.priority] = &anim_data;
+            if (anim_data.priority < best_priority) {
+                best_priority = anim_data.priority;
+                best = &anim_data;
+            }
         }
-        
     }
 
-    if (!result.empty()) {
-        return *result.begin()->second;
+    if (best) {
+        return *best;
     }
 
     return {};
@@ -260,25 +296,25 @@ int Manager::OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
 int Manager::OnMenuOpenClose(const std::string_view menu_name, const bool opened)
 {
     const auto player = RE::PlayerCharacter::GetSingleton();
-	const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, opened ? Presets::kOpen : Presets::kClose);
+    const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, opened ? Presets::kOpen : Presets::kClose);
     return PlayAnimation({menuanimevent, player, nullptr});
 }
 
 int Manager::OnItemHover(const std::string_view menu_name, const RE::StandardItemData* a_item_data)
 {
 #undef GetObject
-	const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, Presets::kHover);
+    const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, Presets::kHover);
     RE::TESObjectREFRPtr a_owner;
 
     if (RE::LookupReferenceByHandle(a_item_data->owner,a_owner)) {
         return PlayAnimation({menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject()});
     }
     if (menuanimevent == Presets::AnimEvent::kMenuHoverBarter) {
-		const auto handle = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()->GetTargetRefHandle();
-		if (RE::LookupReferenceByHandle(handle,a_owner)) {
+        const auto handle = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()->GetTargetRefHandle();
+        if (RE::LookupReferenceByHandle(handle,a_owner)) {
             return PlayAnimation({menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject()});
-		}
-	}
+        }
+    }
     return 0;
 }
 
