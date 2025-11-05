@@ -31,27 +31,38 @@ class Manager : public clib_util::singleton::ISingleton<Manager>
 
 	std::map<std::string_view,bool> queued_menus;
 
+	struct AnimEventInfo {
+		DAF_API::AnimEventID event_id;
+		RE::TESObjectREFR* a_actor;
+	    RE::TESForm* a_item;
+
+	    AnimEventInfo(const DAF_API::AnimEventID a_event_id,
+					  RE::TESObjectREFR* a_actor,
+					  RE::TESForm* a_item=nullptr)
+			: event_id(a_event_id), a_actor(a_actor), a_item(a_item) {}
+	};
+
 public:
 
 	void PauseAnimators();
 	void ResumeAnimators();
-	int PlayAnimation(DAF_API::AnimEventID a_animevent, RE::TESObjectREFR* a_actor, RE::TESForm* a_form);
+	int PlayAnimation(AnimEventInfo a_info);
 
     void SetMenuQueued(std::string_view menu_name, bool for_open);
 	void UnSetMenuQueued(std::string_view menu_name);
-	bool IsMenuQueued(std::string_view menu_name) const;
-	bool IsMenuQueued(std::string_view menu_name, bool for_open) const;
+	[[nodiscard]] bool IsMenuQueued(std::string_view menu_name) const;
+	[[nodiscard]] bool IsMenuQueued(std::string_view menu_name, bool for_open) const;
     static void OpenCloseMenu(std::string_view menu_name, bool open);
 
-	int OnActivate(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
-	int OnPickup(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
-	int OnDrop(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
-	int OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
-	int OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
-	int OnEquip(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
-	int OnUnequip(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
-	int OnBuy(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
-	int OnSell(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item);
+	int OnActivate(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnPickup(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnDrop(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnEquip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnUnequip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnBuy(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
 	int OnMenuOpenClose(std::string_view menu_name, bool opened);
 	int OnItemHover(std::string_view menu_name, const RE::StandardItemData* a_item_data);
 };

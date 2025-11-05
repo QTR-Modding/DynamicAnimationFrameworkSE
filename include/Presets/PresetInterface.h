@@ -27,6 +27,7 @@ namespace Presets {
         Field<std::vector<std::string>,rapidjson::Value> actors_str = { "actors" };
         Field<std::vector<std::string>,rapidjson::Value> locations = { "locations" };
 		Field<std::vector<std::string>,rapidjson::Value> actor_keywords = { "actor_keywords" };
+        Field<std::vector<std::string>,rapidjson::Value> conditions = { "conditions" };
 
         Field<std::string,rapidjson::Value> attach_node = { "attach_node" };
         Field<std::vector<std::string>,rapidjson::Value> hide_nodes = { "hide_nodes" };
@@ -95,6 +96,7 @@ namespace Presets {
         std::unordered_set<RE::FormID> actors;
 		std::unordered_set<RE::BGSKeyword*> actor_keywords;
 		std::unordered_set<RE::BGSLocation*> locations;
+        std::unordered_set<RE::BGSPerk*> conditions;
 
         std::string attach_node;
 		std::vector<std::string> hide_nodes; // TODO: implement

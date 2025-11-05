@@ -16,8 +16,10 @@ DAF_API::AnimEventID ProcessRequestEventID(const char* a_event, int a_major, int
 
 int ProcessSendEvent(DAF_API::AnimEventID a_event, uint32_t a_actor, uint32_t a_form)
 {
-    return Manager::GetSingleton()->PlayAnimation(a_event, RE::Actor::LookupByID<RE::Actor>(a_actor),
-                                                  RE::TESForm::LookupByID(a_form));
+    return Manager::GetSingleton()->PlayAnimation( {
+        a_event, RE::Actor::LookupByID<RE::Actor>(a_actor),
+       RE::TESForm::LookupByID(a_form)
+    });
 
 }
 

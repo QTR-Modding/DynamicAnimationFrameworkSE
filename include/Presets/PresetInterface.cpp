@@ -84,6 +84,9 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     for (const auto& keyword : a_block.actor_keywords.get()) {
         CollectForms(keyword,actor_keywords);
     }
+    for (const auto& perkStr : a_block.conditions.get()) {
+        CollectForms(perkStr, conditions);
+    }
 
     for (const auto& node : a_block.hide_nodes.get()) {
         hide_nodes.push_back(node);

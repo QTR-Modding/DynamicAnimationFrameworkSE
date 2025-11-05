@@ -15,8 +15,8 @@ namespace {
 
 bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain)
 {
-    if (RE::ActorHandlePtr actor; 
-        RE::BSPointerHandleManagerInterface<RE::Actor>::GetSmartPointer(a_actor->GetHandle(),actor)) {
+    if (RE::ActorHandlePtr actor;
+        RE::BSPointerHandleManagerInterface<RE::Actor>::GetSmartPointer(a_actor->GetHandle(), actor)) {
         MyAnimator* animator = nullptr;
         if (std::shared_lock lock(m_animators_); animators.contains(actor)) {
             animator = animators.at(actor);
@@ -36,21 +36,23 @@ bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEve
     return false;
 }
 
-int Manager::PlayAnimation(DAF_API::AnimEventID a_animevent, RE::TESObjectREFR* a_actor, RE::TESForm* a_form)
+int Manager::PlayAnimation(AnimEventInfo a_info)
 {
-    if (const auto actor = a_actor->As<RE::Actor>()) {
+
+    if (const auto actor = a_info.a_actor->As<RE::Actor>()) {
         if (!ActorCheck(actor)) {
             return 0;
         }
 
-        if (const auto anim_data = GetAnimData(a_animevent,{.actor_id= a_actor->GetFormID(),.form= a_form}); 
+        if (const auto anim_data = GetAnimData(a_info.event_id,{.actor_id= actor->GetFormID(),.form= a_info.a_item}); 
             !anim_data.animations.empty()) {
 
-            if (PlayAnimation(actor,{a_animevent,anim_data.animations})) {
+            if (PlayAnimation(actor,{a_info.event_id,anim_data.animations})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
-                    if (const auto actor_id = a_actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
+                    if (const auto actor_id = actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
+                        // ReSharper disable once CppTooWideScopeInitStatement
                         RE::NiPointer<RE::NiAVObject> a_model;
-                        if (Utils::GetModel(a_form, a_model); a_model) {
+                        if (Utils::GetModel(a_info.a_item, a_model); a_model) {
 						    Hooks::item_meshes[actor_id] = {a_model, attach_node};
                         }
                     }
@@ -131,9 +133,10 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
     const auto filter_actorid = filter.actor_id;
     const auto filter_actor = RE::TESForm::LookupByID<RE::Actor>(filter.actor_id);
     const auto filter_actor_kw = filter_actor ? filter_actor->As<RE::BGSKeywordForm>() : nullptr;
-    const auto filter_form = filter.form;
-    const auto filter_form_kw = filter_form ? filter_form->As<RE::BGSKeywordForm>() : nullptr;
-    const auto filter_formtype = filter_form ? filter_form->GetFormType() : RE::FormType::None;
+    RE::TESBoundObject* filter_base = filter.form ? filter.form->Is(RE::FormType::Reference) ? filter.form->AsReference()->GetBaseObject() : filter.form->As<RE::TESBoundObject>() : nullptr;
+    const auto filter_form_kw = filter_base ? filter_base->As<RE::BGSKeywordForm>() : nullptr;
+    const auto filter_formtype = filter_base ? filter_base->GetFormType() : RE::FormType::None;
+    const auto filter_target = filter.form ? filter.form->AsReference() : nullptr;
 
     if (std::shared_lock lock(Presets::m_anim_data_); Presets::anim_map.contains(a_animevent)) {
         for (auto& anim_data : Presets::anim_map.at(a_animevent)) {
@@ -143,7 +146,7 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
             if (!anim_data.actors.empty() && !anim_data.actors.contains(filter_actorid)) {
                 continue;
             }
-            if (!anim_data.forms.empty() && !anim_data.forms.contains(filter_form)) {
+            if (!anim_data.forms.empty() && !anim_data.forms.contains(filter_base)) {
                 continue;
             }
             if (!anim_data.keywords.empty()) {
@@ -151,7 +154,7 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
                 if (filter_form_kw) {
                     filter_form_kw->ForEachKeyword([&kws](RE::BGSKeyword* a_kw){kws.push_back(a_kw);return RE::BSContainer::ForEachResult::kContinue;});
                 }
-                if (!std::ranges::any_of(kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.keywords.contains(a_kw);})) {
+                if (!std::ranges::any_of(kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.keywords.contains(a_kw);})){ 
                     continue;
                 }
             }
@@ -160,10 +163,21 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
                 if (filter_actor_kw) {
                     filter_actor_kw->ForEachKeyword([&kws](RE::BGSKeyword* a_kw){kws.push_back(a_kw);return RE::BSContainer::ForEachResult::kContinue;});
                 }
-                if (!std::ranges::any_of(kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.actor_keywords.contains(a_kw);})) {
+                if (!std::ranges::any_of(kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.actor_keywords.contains(a_kw);})){ 
                     continue;
                 }
             }
+
+            // Actor perk filter: evaluate provided perk conditions; do not require the actor to own the perk
+            logger::info("asd1");
+            if (!anim_data.conditions.empty() && 
+                !std::ranges::any_of(anim_data.conditions, [&filter_actor,&filter_target](const RE::BGSPerk* a_perk) {
+                    logger::info("asd2 {} {}", filter_actor->GetName(), filter_target ? filter_target->GetName() : "NULL");
+                    return a_perk && a_perk->perkConditions.IsTrue(filter_actor,filter_target);
+            })) {
+                continue;
+            }
+            logger::info("asd3");
 
             if (!anim_data.locations.empty()) {
                 RE::BGSLocation* a_loc = nullptr;
@@ -174,8 +188,6 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
                     continue;
                 }
             }
-
-
 
             result[anim_data.priority] = &anim_data;
         }
@@ -205,54 +217,54 @@ void Manager::ResumeAnimators()
     }
 }
 
-int Manager::OnActivate(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item) {
-    return PlayAnimation(Presets::AnimEvent::kActivate,a_actor,a_item);
+int Manager::OnActivate(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kActivate,a_actor,a_item});
 }
 
-int Manager::OnPickup(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item) {
-    return PlayAnimation(Presets::AnimEvent::kItemPickup,a_actor,a_item);
+int Manager::OnPickup(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kItemPickup,a_actor,a_item});
 }
 
-int Manager::OnDrop(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item)
+int Manager::OnDrop(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
 {
-    return PlayAnimation(Presets::AnimEvent::kItemDrop,a_actor,a_item);
+    return PlayAnimation({Presets::AnimEvent::kItemDrop,a_actor,a_item});
 }
 
-int Manager::OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item)
+int Manager::OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
 {
-    return PlayAnimation(Presets::AnimEvent::kItemAdd,a_actor,a_item);
+    return PlayAnimation({Presets::AnimEvent::kItemAdd,a_actor,a_item});
 }
 
-int Manager::OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item)
+int Manager::OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
 {
-    return PlayAnimation(Presets::AnimEvent::kItemRemove,a_actor,a_item);
+    return PlayAnimation({Presets::AnimEvent::kItemRemove,a_actor,a_item});
 }
 
-int Manager::OnEquip(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item)
+int Manager::OnEquip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
 {
-    return PlayAnimation(Presets::AnimEvent::kEquip,a_actor,a_item);
+    return PlayAnimation({Presets::AnimEvent::kEquip,a_actor,a_item});
 }
 
-int Manager::OnUnequip(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item)
+int Manager::OnUnequip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
 {
-    return PlayAnimation(Presets::AnimEvent::kUnequip,a_actor,a_item);
+    return PlayAnimation({Presets::AnimEvent::kUnequip,a_actor,a_item});
 }
 
-int Manager::OnBuy(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item)
+int Manager::OnBuy(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
 {
-    return PlayAnimation(Presets::AnimEvent::kBuy,a_actor,a_item);
+    return PlayAnimation({Presets::AnimEvent::kBuy,a_actor,a_item});
 }
 
-int Manager::OnSell(RE::TESObjectREFR* a_actor, RE::TESBoundObject* a_item)
+int Manager::OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
 {
-    return PlayAnimation(Presets::AnimEvent::kSell,a_actor,a_item);
+    return PlayAnimation({Presets::AnimEvent::kSell,a_actor,a_item});
 }
 
 int Manager::OnMenuOpenClose(const std::string_view menu_name, const bool opened)
 {
     const auto player = RE::PlayerCharacter::GetSingleton();
 	const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, opened ? Presets::kOpen : Presets::kClose);
-    return PlayAnimation(menuanimevent, player, nullptr);
+    return PlayAnimation({menuanimevent, player, nullptr});
 }
 
 int Manager::OnItemHover(const std::string_view menu_name, const RE::StandardItemData* a_item_data)
@@ -262,12 +274,12 @@ int Manager::OnItemHover(const std::string_view menu_name, const RE::StandardIte
     RE::TESObjectREFRPtr a_owner;
 
     if (RE::LookupReferenceByHandle(a_item_data->owner,a_owner)) {
-        return PlayAnimation(menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject());
+        return PlayAnimation({menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject()});
     }
     if (menuanimevent == Presets::AnimEvent::kMenuHoverBarter) {
 		const auto handle = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()->GetTargetRefHandle();
 		if (RE::LookupReferenceByHandle(handle,a_owner)) {
-            return PlayAnimation(menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject());
+            return PlayAnimation({menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject()});
 		}
 	}
     return 0;
