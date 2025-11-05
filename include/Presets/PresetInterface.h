@@ -108,4 +108,5 @@ namespace Presets {
 	inline std::shared_mutex m_anim_data_;
 	inline std::unordered_map<DAF_API::AnimEventID,std::vector<AnimData>> anim_map;
     void Load();
+	inline bool loaded = false;
 }

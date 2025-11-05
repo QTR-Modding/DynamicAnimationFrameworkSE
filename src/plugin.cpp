@@ -6,6 +6,10 @@
 void OnMessage(SKSE::MessagingInterface::Message* message) {  // NOLINT(misc-use-internal-linkage)
     if (message->type == SKSE::MessagingInterface::kDataLoaded) {
         Hooks::Install();
+    }
+    if (message->type == SKSE::MessagingInterface::kPreLoadGame ||
+        message->type == SKSE::MessagingInterface::kNewGame) {
+		// to allow dynamic forms, we push this to a later stage after kDataLoaded
         Presets::Load();
     }
 }

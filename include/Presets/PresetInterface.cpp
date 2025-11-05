@@ -156,16 +156,20 @@ Presets::AnimEvent Presets::GetMenuAnimEvent(const std::string_view menu_name, c
 
 void Presets::Load() {
 
-
-    constexpr std::string_view formGroupsFolder = R"(Data\SKSE\Plugins\DAF\formGroups)";
-	PresetHelpers::TXT_Helpers::GatherForms(std::string(formGroupsFolder));
+    if (loaded) {
+        return;
+	}
 
     constexpr std::string_view animDataFolder = R"(Data\SKSE\Plugins\DAF\animData)";
+    constexpr std::string_view formGroupsFolder = R"(Data\SKSE\Plugins\DAF\formGroups)";
 
     if (!std::filesystem::exists(animDataFolder)) {
         logger::error("Mod folder does not exist: {}", animDataFolder);
         return;
     }
+
+	PresetHelpers::TXT_Helpers::GatherForms(std::string(formGroupsFolder));
+
 
     // loop folder for folders
     for (const auto& entry : std::filesystem::directory_iterator(animDataFolder)) {
@@ -209,5 +213,7 @@ void Presets::Load() {
             }
         }
     }
+
+	loaded = true;
 }
 
