@@ -34,6 +34,17 @@ namespace  {
         out = s;
         return false;
     }
+
+    template <typename FInc, typename FExc>
+    void ForEachTokenSplitByNegation(const std::vector<std::string>& arr, const FInc& inc, const FExc& exc) {
+        for (const auto& s : arr) {
+            if (std::string_view tok; IsNegatedToken(s, tok)) {
+                exc(std::string(tok));
+            } else {
+                inc(std::string(tok));
+            }
+        }
+    }
 }
 
 Presets::AnimData::AnimData(AnimDataBlock& a_block) {
@@ -70,75 +81,62 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     }
 
     // keywords: support negation via '!'
-    for (const auto& keyword : a_block.keywords.get()) {
-        std::string_view tokenView;
-        if (const bool neg = IsNegatedToken(keyword, tokenView)) {
-            CollectForms(std::string(tokenView), exclude_keywords);
-        } else {
-            CollectForms(std::string(tokenView), keywords);
-        }
-    }
+    ForEachTokenSplitByNegation(
+        a_block.keywords.get(),
+        [&](const std::string& t){ CollectForms(t, keywords); },
+        [&](const std::string& t){ CollectForms(t, exclude_keywords); }
+    );
 
-    // forms: support negation via '!' in-place without changing schema
-    for (const auto& form : a_block.forms.get()) {
-        std::string_view tokenView;
-        if (const bool neg = IsNegatedToken(form, tokenView)) {
-            CollectForms(std::string(tokenView), exclude_forms);
-        } else {
-            CollectForms(std::string(tokenView), forms);
-        }
-    }
+    // forms: support negation via '!'
+    ForEachTokenSplitByNegation(
+        a_block.forms.get(),
+        [&](const std::string& t){ CollectForms(t, forms); },
+        [&](const std::string& t){ CollectForms(t, exclude_forms); }
+    );
 
     // locations: support negation via '!'
-    for (const auto& location : a_block.locations.get()) {
-        std::string_view tokenView;
-        if (const bool neg = IsNegatedToken(location, tokenView)) {
-            CollectForms(std::string(tokenView), exclude_locations);
-        } else {
-            CollectForms(std::string(tokenView), locations);
-        }
-    }
+    ForEachTokenSplitByNegation(
+        a_block.locations.get(),
+        [&](const std::string& t){ CollectForms(t, locations); },
+        [&](const std::string& t){ CollectForms(t, exclude_locations); }
+    );
 
     // actors: numeric stay include-only
     for (const auto& a_formid : a_block.actors.get()) {
         actors.insert(a_formid);
     }
     // actors_str: support negation via '!'
-    for (const auto& a_formid_str : a_block.actors_str.get()) {
-        std::string_view tokenView;
-        const bool neg = IsNegatedToken(a_formid_str, tokenView);
-        if (const auto a_formid = FormReader::GetFormEditorIDFromString(std::string(tokenView)); a_formid > 0) {
-            if (neg) {
-                exclude_actors.insert(a_formid);
+    ForEachTokenSplitByNegation(
+        a_block.actors_str.get(),
+        [&](const std::string& t){
+            if (const auto id = FormReader::GetFormEditorIDFromString(t); id > 0) {
+                actors.insert(id);
             } else {
-                actors.insert(a_formid);
+                logger::warn("Failed to get actor form for string: {}", t);
+            }
+        },
+        [&](const std::string& t){
+            if (const auto id = FormReader::GetFormEditorIDFromString(t); id > 0) {
+                exclude_actors.insert(id);
+            } else {
+                logger::warn("Failed to get actor form for string: {}", t);
             }
         }
-        else {
-            logger::warn("Failed to get actor form for string: {}", a_formid_str);
-        }
-    }
+    );
 
     // actor keywords: support negation via '!'
-    for (const auto& keyword : a_block.actor_keywords.get()) {
-        std::string_view tokenView;
-        if (const bool neg = IsNegatedToken(keyword, tokenView)) {
-            CollectForms(std::string(tokenView), exclude_actor_keywords);
-        } else {
-            CollectForms(std::string(tokenView), actor_keywords);
-        }
-    }
+    ForEachTokenSplitByNegation(
+        a_block.actor_keywords.get(),
+        [&](const std::string& t){ CollectForms(t, actor_keywords); },
+        [&](const std::string& t){ CollectForms(t, exclude_actor_keywords); }
+    );
 
     // conditions (perks): support negation via '!'
-
-    for (const auto& perkStr : a_block.conditions.get()) {
-        std::string_view tokenView;
-        if (const bool neg = IsNegatedToken(perkStr, tokenView)) {
-            CollectForms(std::string(tokenView), exclude_conditions);
-        } else {
-            CollectForms(std::string(tokenView), conditions);
-        }
-    }
+    ForEachTokenSplitByNegation(
+        a_block.conditions.get(),
+        [&](const std::string& t){ CollectForms(t, conditions); },
+        [&](const std::string& t){ CollectForms(t, exclude_conditions); }
+    );
 
     for (const auto& node : a_block.hide_nodes.get()) {
         hide_nodes.push_back(node);
@@ -152,18 +150,21 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     }
 
     // string form types: support negation via '!'
-    for (const auto& form_type_str : a_block.form_types_str.get()) {
-        std::string_view tokenView;
-        const bool neg = IsNegatedToken(form_type_str, tokenView);
-        auto form_type = RE::StringToFormType(std::string(tokenView));
-        if (form_type < RE::FormType::Max && form_type > RE::FormType::None) {
-            if (neg) {
-                exclude_form_types.insert(form_type);
-            } else {
-                form_types.insert(form_type);
+    ForEachTokenSplitByNegation(
+        a_block.form_types_str.get(),
+        [&](const std::string& t){
+            auto ft = RE::StringToFormType(t);
+            if (ft < RE::FormType::Max && ft > RE::FormType::None) {
+                form_types.insert(ft);
+            }
+        },
+        [&](const std::string& t){
+            auto ft = RE::StringToFormType(t);
+            if (ft < RE::FormType::Max && ft > RE::FormType::None) {
+                exclude_form_types.insert(ft);
             }
         }
-    }
+    );
 
     delay = 0;
 

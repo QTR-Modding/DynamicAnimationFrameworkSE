@@ -11,6 +11,19 @@ namespace {
         const REL::Relocation<func_t> func{ RELOCATION_ID(52428, 53327) };
         return func(unk);
     }
+
+    inline void CollectKeywordsVec(const RE::BGSKeywordForm* kf, std::vector<RE::BGSKeyword*>& out) {
+        if (!kf) return;
+        kf->ForEachKeyword([&out](RE::BGSKeyword* a_kw){ out.push_back(a_kw); return RE::BSContainer::ForEachResult::kContinue; });
+    }
+
+    template <typename T>
+    inline bool any_in_set(const std::unordered_set<T*>& s, const std::vector<T*>& v) {
+        for (auto* x : v) {
+            if (s.contains(x)) return true;
+        }
+        return false;
+    }
 }
 
 bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain)
@@ -137,13 +150,9 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
 
     // Precompute keywords once
     std::vector<RE::BGSKeyword*> form_kws;
-    if (filter_form_kw) {
-        filter_form_kw->ForEachKeyword([&form_kws](RE::BGSKeyword* a_kw){ form_kws.push_back(a_kw); return RE::BSContainer::ForEachResult::kContinue; });
-    }
+    CollectKeywordsVec(filter_form_kw, form_kws);
     std::vector<RE::BGSKeyword*> actor_kws;
-    if (filter_actor_kw) {
-        filter_actor_kw->ForEachKeyword([&actor_kws](RE::BGSKeyword* a_kw){ actor_kws.push_back(a_kw); return RE::BSContainer::ForEachResult::kContinue; });
-    }
+    CollectKeywordsVec(filter_actor_kw, actor_kws);
     RE::BGSLocation* current_loc = filter_actor ? filter_actor->GetCurrentLocation() : nullptr;
 
     Presets::AnimData* best = nullptr;
@@ -172,26 +181,18 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
                 continue;
             }
             // form keywords include / exclude
-            if (!anim_data.keywords.empty()) {
-                if (!std::ranges::any_of(form_kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.keywords.contains(a_kw);})){ 
-                    continue;
-                }
+            if (!anim_data.keywords.empty() && !any_in_set(anim_data.keywords, form_kws)) {
+                continue;
             }
-            if (!anim_data.exclude_keywords.empty()) {
-                if (std::ranges::any_of(form_kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.exclude_keywords.contains(a_kw);})){ 
-                    continue;
-                }
+            if (!anim_data.exclude_keywords.empty() && any_in_set(anim_data.exclude_keywords, form_kws)) {
+                continue;
             }
             // actor keywords include / exclude
-            if (!anim_data.actor_keywords.empty()) {
-                if (!std::ranges::any_of(actor_kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.actor_keywords.contains(a_kw);})){ 
-                    continue;
-                }
+            if (!anim_data.actor_keywords.empty() && !any_in_set(anim_data.actor_keywords, actor_kws)) {
+                continue;
             }
-            if (!anim_data.exclude_actor_keywords.empty()) {
-                if (std::ranges::any_of(actor_kws,[&anim_data](RE::BGSKeyword* a_kw){return anim_data.exclude_actor_keywords.contains(a_kw);})){ 
-                    continue;
-                }
+            if (!anim_data.exclude_actor_keywords.empty() && any_in_set(anim_data.exclude_actor_keywords, actor_kws)) {
+                continue;
             }
 
             // conditions include / exclude
@@ -209,15 +210,11 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
             }
 
             // locations include / exclude
-            if (!anim_data.locations.empty()) {
-                if (!anim_data.locations.contains(current_loc)) {
-                    continue;
-                }
+            if (!anim_data.locations.empty() && !anim_data.locations.contains(current_loc)) {
+                continue;
             }
-            if (!anim_data.exclude_locations.empty()) {
-                if (anim_data.exclude_locations.contains(current_loc)) {
-                    continue;
-                }
+            if (!anim_data.exclude_locations.empty() && anim_data.exclude_locations.contains(current_loc)) {
+                continue;
             }
 
             if (anim_data.priority < best_priority) {
