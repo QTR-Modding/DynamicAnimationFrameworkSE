@@ -27,6 +27,7 @@ namespace Presets {
         Field<std::vector<std::string>,rapidjson::Value> actors_str = { "actors" };
         Field<std::vector<std::string>,rapidjson::Value> locations = { "locations" };
 		Field<std::vector<std::string>,rapidjson::Value> actor_keywords = { "actor_keywords" };
+        Field<std::vector<std::string>,rapidjson::Value> conditions = { "conditions" };
 
         Field<std::string,rapidjson::Value> attach_node = { "attach_node" };
         Field<std::vector<std::string>,rapidjson::Value> hide_nodes = { "hide_nodes" };
@@ -89,12 +90,27 @@ namespace Presets {
 		std::unordered_set<DAF_API::AnimEventID> events;
 
         std::unordered_set<RE::TESForm*> forms;
+        // internal container populated from forms tokens prefixed with '!'
+        std::unordered_set<RE::TESForm*> exclude_forms;
 		std::unordered_set<RE::FormType> form_types;
+        // internal container populated from form_types_str tokens prefixed with '!'
+        std::unordered_set<RE::FormType> exclude_form_types;
 		std::unordered_set<RE::BGSKeyword*> keywords;
+        // internal container populated from keyword tokens prefixed with '!'
+        std::unordered_set<RE::BGSKeyword*> exclude_keywords;
 
         std::unordered_set<RE::FormID> actors;
+        // internal container populated from actors_str tokens prefixed with '!'
+        std::unordered_set<RE::FormID> exclude_actors;
 		std::unordered_set<RE::BGSKeyword*> actor_keywords;
+        // internal container populated from actor_keywords tokens prefixed with '!'
+        std::unordered_set<RE::BGSKeyword*> exclude_actor_keywords;
 		std::unordered_set<RE::BGSLocation*> locations;
+        // internal container populated from locations tokens prefixed with '!'
+        std::unordered_set<RE::BGSLocation*> exclude_locations;
+        std::unordered_set<RE::BGSPerk*> conditions;
+        // internal container populated from conditions tokens prefixed with '!'
+        std::unordered_set<RE::BGSPerk*> exclude_conditions;
 
         std::string attach_node;
 		std::vector<std::string> hide_nodes; // TODO: implement
@@ -108,4 +124,5 @@ namespace Presets {
 	inline std::shared_mutex m_anim_data_;
 	inline std::unordered_map<DAF_API::AnimEventID,std::vector<AnimData>> anim_map;
     void Load();
+	inline bool loaded = false;
 }

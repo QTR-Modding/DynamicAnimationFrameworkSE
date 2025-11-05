@@ -56,7 +56,6 @@ void Hooks::add_item_functor(RE::TESObjectREFR* a_this, RE::TESObjectREFR* a_obj
 	if (!a_this || !a_object) {
 		return add_item_functor_(a_this, a_object, a_count, a4, a5);
 	}
-    //Manager::GetSingleton()->OnPickup(a_this, a_object->GetBaseObject());
 	return add_item_functor_(a_this, a_object, a_count, a4, a5);
 }
 
@@ -101,11 +100,11 @@ void Hooks::DrawHook::thunk(std::uint32_t a_timer)
 template<typename RefType>
 void Hooks::MoveItemHooks<RefType>::pickUpObject(RefType * a_this, RE::TESObjectREFR * a_object, int32_t a_count, bool a_arg3, bool a_play_sound)
 {
-	if (!a_this || !a_object || a_count <= 0) {
+	if (!a_this || !a_object || a_count <= 0 || a_object->IsDisabled() || a_object->IsDeleted() || a_object->IsMarkedForDeletion()) {
 		return pick_up_object_(a_this, a_object, a_count, a_arg3, a_play_sound);
 	}
 
-	if (auto delay = Manager::GetSingleton()->OnPickup(a_this, a_object->GetBaseObject()); delay > 0) {
+	if (auto delay = Manager::GetSingleton()->OnPickup(a_this, a_object); delay > 0) {
 		CallOriginalMethodDelayed(delay, a_this, pick_up_object_.get(), a_this, a_object, a_count, a_arg3, a_play_sound);
 	    return;
 	}
@@ -250,9 +249,8 @@ RE::UI_MESSAGE_RESULTS Hooks::MenuHook<MenuType>::ProcessMessage_Hook(RE::UIMess
 template<typename FormType>
 bool Hooks::ActivateHook<FormType>::Activate_Hook(FormType* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3, RE::TESBoundObject* a_obj, std::int32_t a_targetCount)
 {
-    if (a_activatorRef) {
-        const auto item = a_targetRef ? a_targetRef->GetBaseObject() : nullptr;
-        if (auto delay = Manager::GetSingleton()->OnActivate(a_activatorRef,item); delay > 0) {
+    if (a_activatorRef && a_targetRef && !a_targetRef->IsDisabled() && !a_targetRef->IsDeleted() && !a_targetRef->IsMarkedForDeletion()) {
+        if (auto delay = Manager::GetSingleton()->OnActivate(a_activatorRef,a_targetRef); delay > 0) {
             CallLambdaDelayed(delay, [=] {
                 _Activate(a_this, a_targetRef, a_activatorRef, a_arg3, a_obj, a_targetCount);
             });
