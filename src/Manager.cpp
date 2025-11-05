@@ -169,15 +169,12 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
             }
 
             // Actor perk filter: evaluate provided perk conditions; do not require the actor to own the perk
-            logger::info("asd1");
-            if (!anim_data.conditions.empty() && 
+            if (!anim_data.conditions.empty() && filter_actor &&
                 !std::ranges::any_of(anim_data.conditions, [&filter_actor,&filter_target](const RE::BGSPerk* a_perk) {
-                    logger::info("asd2 {} {}", filter_actor->GetName(), filter_target ? filter_target->GetName() : "NULL");
                     return a_perk && a_perk->perkConditions.IsTrue(filter_actor,filter_target);
             })) {
                 continue;
             }
-            logger::info("asd3");
 
             if (!anim_data.locations.empty()) {
                 RE::BGSLocation* a_loc = nullptr;
