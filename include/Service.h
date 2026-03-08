@@ -4,7 +4,7 @@
 
 #define DLLEXPORT __declspec(dllexport)
 
-extern "C" DLLEXPORT DAF_API::AnimEventID ProcessRequestEventID(const char* a_event,int a_major, int a_minor);
+extern "C" DLLEXPORT DAF_API::AnimEventID ProcessRequestEventID(const char* a_event, int a_major, int a_minor);
 extern "C" DLLEXPORT int ProcessSendEvent(DAF_API::AnimEventID a_event, uint32_t a_actor, uint32_t a_form);
 
 namespace Service {

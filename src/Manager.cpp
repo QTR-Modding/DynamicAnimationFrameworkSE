@@ -5,20 +5,22 @@
 
 namespace {
     // Credits: shad0wshayd3, https://next.nexusmods.com/profile/shad0wshayd3?gameId=1704
-    void OpenJournalMenu(bool unk)
-    {
+    void OpenJournalMenu(bool unk) {
         using func_t = decltype(&OpenJournalMenu);
-        const REL::Relocation<func_t> func{ RELOCATION_ID(52428, 53327) };
+        const REL::Relocation<func_t> func{RELOCATION_ID(52428, 53327)};
         return func(unk);
     }
 
-    inline void CollectKeywordsVec(const RE::BGSKeywordForm* kf, std::vector<RE::BGSKeyword*>& out) {
+    void CollectKeywordsVec(const RE::BGSKeywordForm* kf, std::vector<RE::BGSKeyword*>& out) {
         if (!kf) return;
-        kf->ForEachKeyword([&out](RE::BGSKeyword* a_kw){ out.push_back(a_kw); return RE::BSContainer::ForEachResult::kContinue; });
+        kf->ForEachKeyword([&out](RE::BGSKeyword* a_kw) {
+            out.push_back(a_kw);
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
     }
 
     template <typename T>
-    inline bool any_in_set(const std::unordered_set<T*>& s, const std::vector<T*>& v) {
+    bool any_in_set(const std::unordered_set<T*>& s, const std::vector<T*>& v) {
         for (auto* x : v) {
             if (s.contains(x)) return true;
         }
@@ -26,8 +28,8 @@ namespace {
     }
 }
 
-bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain)
-{
+bool Manager::PlayAnimation(RE::Actor* a_actor,
+                            const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain) {
     if (RE::ActorHandlePtr actor;
         RE::BSPointerHandleManagerInterface<RE::Actor>::GetSmartPointer(a_actor->GetHandle(), actor)) {
         MyAnimator* animator = nullptr;
@@ -49,17 +51,16 @@ bool Manager::PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEve
     return false;
 }
 
-int Manager::PlayAnimation(AnimEventInfo a_info)
-{
+int Manager::PlayAnimation(AnimEventInfo a_info) {
     if (const auto actor = a_info.a_actor->As<RE::Actor>()) {
         if (!ActorCheck(actor)) {
             return 0;
         }
 
-        if (const auto anim_data = GetAnimData(a_info.event_id,{.actor_id= actor->GetFormID(),.form= a_info.a_item}); 
+        if (const auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item})
+            ;
             !anim_data.animations.empty()) {
-
-            if (PlayAnimation(actor,{a_info.event_id,anim_data.animations})) {
+            if (PlayAnimation(actor, {a_info.event_id, anim_data.animations})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
                     if (const auto actor_id = actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
                         // ReSharper disable once CppTooWideScopeInitStatement
@@ -68,7 +69,6 @@ int Manager::PlayAnimation(AnimEventInfo a_info)
                             Hooks::item_meshes[actor_id] = {a_model, attach_node};
                         }
                     }
-
                 }
                 return anim_data.delay;
             }
@@ -77,29 +77,24 @@ int Manager::PlayAnimation(AnimEventInfo a_info)
     return 0;
 }
 
-void Manager::SetMenuQueued(const std::string_view menu_name, const bool for_open)
-{
+void Manager::SetMenuQueued(const std::string_view menu_name, const bool for_open) {
     queued_menus[menu_name] = for_open;
 }
 
-void Manager::UnSetMenuQueued(const std::string_view menu_name)
-{
+void Manager::UnSetMenuQueued(const std::string_view menu_name) {
     queued_menus.erase(menu_name);
 }
 
-bool Manager::IsMenuQueued(const std::string_view menu_name) const
-{
+bool Manager::IsMenuQueued(const std::string_view menu_name) const {
     return queued_menus.contains(menu_name);
 }
 
-bool Manager::IsMenuQueued(const std::string_view menu_name, const bool for_open) const
-{
+bool Manager::IsMenuQueued(const std::string_view menu_name, const bool for_open) const {
     return queued_menus.contains(menu_name) && queued_menus.at(menu_name) == for_open;
 }
 
-void Manager::OpenCloseMenu(const std::string_view menu_name, const bool open)
-{
-    const auto a_type = open ? RE::UI_MESSAGE_TYPE::kShow:RE::UI_MESSAGE_TYPE::kHide;
+void Manager::OpenCloseMenu(const std::string_view menu_name, const bool open) {
+    const auto a_type = open ? RE::UI_MESSAGE_TYPE::kShow : RE::UI_MESSAGE_TYPE::kHide;
 
     if (menu_name == RE::JournalMenu::MENU_NAME) {
         if (open) {
@@ -111,12 +106,12 @@ void Manager::OpenCloseMenu(const std::string_view menu_name, const bool open)
     if (menu_name == RE::InventoryMenu::MENU_NAME) {
         if (!open) {
             RE::UIMessageQueue::GetSingleton()->AddMessage(
-                        RE::TweenMenu::MENU_NAME, a_type,nullptr);
+                RE::TweenMenu::MENU_NAME, a_type, nullptr);
         }
     }
 
     RE::UIMessageQueue::GetSingleton()->AddMessage(
-                    menu_name, a_type,nullptr);
+        menu_name, a_type, nullptr);
 }
 
 bool Manager::ActorCheck(const RE::Actor* a_actor) {
@@ -138,12 +133,15 @@ bool Manager::ActorHandleEqual::operator(
     return lhs->GetFormID() == rhs->GetFormID();
 }
 
-Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, const Filter& filter)
-{
+Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, const Filter& filter) {
     const auto filter_actorid = filter.actor_id;
     const auto filter_actor = RE::TESForm::LookupByID<RE::Actor>(filter.actor_id);
     const auto filter_actor_kw = filter_actor ? filter_actor->As<RE::BGSKeywordForm>() : nullptr;
-    RE::TESBoundObject* filter_base = filter.form ? filter.form->Is(RE::FormType::Reference) ? filter.form->AsReference()->GetBaseObject() : filter.form->As<RE::TESBoundObject>() : nullptr;
+    RE::TESBoundObject* filter_base = filter.form
+                                          ? filter.form->Is(RE::FormType::Reference)
+                                                ? filter.form->AsReference()->GetBaseObject()
+                                                : filter.form->As<RE::TESBoundObject>()
+                                          : nullptr;
     const auto filter_form_kw = filter_base ? filter_base->As<RE::BGSKeywordForm>() : nullptr;
     const auto filter_formtype = filter_base ? filter_base->GetFormType() : RE::FormType::None;
     const auto filter_target = filter.form ? filter.form->AsReference() : nullptr;
@@ -198,14 +196,15 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
             // conditions include / exclude
             if (!anim_data.conditions.empty() && filter_actor &&
                 !std::ranges::any_of(anim_data.conditions, [&filter_actor,&filter_target](const RE::BGSPerk* a_perk) {
-                    return a_perk && a_perk->perkConditions.IsTrue(filter_actor,filter_target);
-            })) {
+                    return a_perk && a_perk->perkConditions.IsTrue(filter_actor, filter_target);
+                })) {
                 continue;
             }
             if (!anim_data.exclude_conditions.empty() && filter_actor &&
-                std::ranges::any_of(anim_data.exclude_conditions, [&filter_actor,&filter_target](const RE::BGSPerk* a_perk) {
-                    return a_perk && a_perk->perkConditions.IsTrue(filter_actor,filter_target);
-            })) {
+                std::ranges::any_of(anim_data.exclude_conditions,
+                                    [&filter_actor,&filter_target](const RE::BGSPerk* a_perk) {
+                                        return a_perk && a_perk->perkConditions.IsTrue(filter_actor, filter_target);
+                                    })) {
                 continue;
             }
 
@@ -231,16 +230,14 @@ Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, c
     return {};
 }
 
-void Manager::PauseAnimators()
-{
+void Manager::PauseAnimators() {
     std::unique_lock lock(m_animators_);
     for (const auto& animator : animators | std::views::values) {
         animator->Pause();
     }
 }
 
-void Manager::ResumeAnimators()
-{
+void Manager::ResumeAnimators() {
     std::unique_lock lock(m_animators_);
     for (const auto& animator : animators | std::views::values) {
         animator->Resume();
@@ -248,80 +245,68 @@ void Manager::ResumeAnimators()
 }
 
 int Manager::OnActivate(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
-    return PlayAnimation({Presets::AnimEvent::kActivate,a_actor,a_item});
+    return PlayAnimation({Presets::AnimEvent::kActivate, a_actor, a_item});
 }
 
 int Manager::OnPickup(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
-    return PlayAnimation({Presets::AnimEvent::kItemPickup,a_actor,a_item});
+    return PlayAnimation({Presets::AnimEvent::kItemPickup, a_actor, a_item});
 }
 
-int Manager::OnDrop(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
-{
-    return PlayAnimation({Presets::AnimEvent::kItemDrop,a_actor,a_item});
+int Manager::OnDrop(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kItemDrop, a_actor, a_item});
 }
 
-int Manager::OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
-{
-    return PlayAnimation({Presets::AnimEvent::kItemAdd,a_actor,a_item});
+int Manager::OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kItemAdd, a_actor, a_item});
 }
 
-int Manager::OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
-{
-    return PlayAnimation({Presets::AnimEvent::kItemRemove,a_actor,a_item});
+int Manager::OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kItemRemove, a_actor, a_item});
 }
 
-int Manager::OnEquip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
-{
-    return PlayAnimation({Presets::AnimEvent::kEquip,a_actor,a_item});
+int Manager::OnEquip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kEquip, a_actor, a_item});
 }
 
-int Manager::OnUnequip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
-{
-    return PlayAnimation({Presets::AnimEvent::kUnequip,a_actor,a_item});
+int Manager::OnUnequip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kUnequip, a_actor, a_item});
 }
 
-int Manager::OnBuy(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
-{
-    return PlayAnimation({Presets::AnimEvent::kBuy,a_actor,a_item});
+int Manager::OnBuy(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kBuy, a_actor, a_item});
 }
 
-int Manager::OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
-{
-    return PlayAnimation({Presets::AnimEvent::kSell,a_actor,a_item});
+int Manager::OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kSell, a_actor, a_item});
 }
 
-int Manager::OnMagicEffectCast(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect)
-{
+int Manager::OnMagicEffectCast(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect) {
     return PlayAnimation({Presets::AnimEvent::kMagicEffectCast, a_actor, a_effect});
 }
 
-int Manager::OnMagicEffectTarget(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect)
-{
+int Manager::OnMagicEffectTarget(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect) {
     return PlayAnimation({Presets::AnimEvent::kMagicEffectTarget, a_actor, a_effect});
 }
 
-int Manager::OnMenuOpenClose(const std::string_view menu_name, const bool opened)
-{
+int Manager::OnMenuOpenClose(const std::string_view menu_name, const bool opened) {
     const auto player = RE::PlayerCharacter::GetSingleton();
     const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, opened ? Presets::kOpen : Presets::kClose);
     return PlayAnimation({menuanimevent, player, nullptr});
 }
 
-int Manager::OnItemHover(const std::string_view menu_name, const RE::StandardItemData* a_item_data)
-{
-#undef GetObject
+int Manager::OnItemHover(const std::string_view menu_name, const RE::StandardItemData* a_item_data) {
+    #undef GetObject
     const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, Presets::kHover);
     RE::TESObjectREFRPtr a_owner;
 
-    if (RE::LookupReferenceByHandle(a_item_data->owner,a_owner)) {
+    if (RE::LookupReferenceByHandle(a_item_data->owner, a_owner)) {
         return PlayAnimation({menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject()});
     }
     if (menuanimevent == Presets::AnimEvent::kMenuHoverBarter) {
         const auto handle = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()->GetTargetRefHandle();
-        if (RE::LookupReferenceByHandle(handle,a_owner)) {
+        if (RE::LookupReferenceByHandle(handle, a_owner)) {
             return PlayAnimation({menuanimevent, a_owner.get(), a_item_data->objDesc->GetObject()});
         }
     }
     return 0;
 }
-

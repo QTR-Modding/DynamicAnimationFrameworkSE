@@ -3,25 +3,22 @@
 #include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
 
 
-namespace  {
+namespace {
     template <typename T>
     void CollectForms(const std::string& form_string, std::unordered_set<T*>& a_container) {
         if (std::shared_lock lock(PresetHelpers::formGroups_mutex_); PresetHelpers::formGroups.contains(form_string)) {
-            for (auto a_formid:PresetHelpers::formGroups.at(form_string)) {
+            for (auto a_formid : PresetHelpers::formGroups.at(form_string)) {
                 if (auto a_form = RE::TESForm::LookupByID<T>(a_formid)) {
                     a_container.insert(a_form);
-                }
-                else {
-                    logger::warn("Failed to get form for string: {}",form_string);
+                } else {
+                    logger::warn("Failed to get form for string: {}", form_string);
                 }
             }
-        }
-        else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid >0) {
+        } else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid > 0) {
             if (auto a_form = RE::TESForm::LookupByID<T>(a_formid)) {
                 a_container.insert(a_form);
-            }
-            else {
-                logger::warn("Failed to get form for string: {}",form_string);
+            } else {
+                logger::warn("Failed to get form for string: {}", form_string);
             }
         }
     }
@@ -60,9 +57,9 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
         //    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
         //}
         if (i < durations.size()) {
-            animations.emplace_back(a_idle, a_idle ? "" : name,durations[i]);
+            animations.emplace_back(a_idle, a_idle ? "" : name, durations[i]);
         } else {
-            animations.emplace_back(a_idle, a_idle ? "" : name,0);
+            animations.emplace_back(a_idle, a_idle ? "" : name, 0);
         }
         ++i;
     }
@@ -83,23 +80,23 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     // keywords: support negation via '!'
     ForEachTokenSplitByNegation(
         a_block.keywords.get(),
-        [&](const std::string& t){ CollectForms(t, keywords); },
-        [&](const std::string& t){ CollectForms(t, exclude_keywords); }
-    );
+        [&](const std::string& t) { CollectForms(t, keywords); },
+        [&](const std::string& t) { CollectForms(t, exclude_keywords); }
+        );
 
     // forms: support negation via '!'
     ForEachTokenSplitByNegation(
         a_block.forms.get(),
-        [&](const std::string& t){ CollectForms(t, forms); },
-        [&](const std::string& t){ CollectForms(t, exclude_forms); }
-    );
+        [&](const std::string& t) { CollectForms(t, forms); },
+        [&](const std::string& t) { CollectForms(t, exclude_forms); }
+        );
 
     // locations: support negation via '!'
     ForEachTokenSplitByNegation(
         a_block.locations.get(),
-        [&](const std::string& t){ CollectForms(t, locations); },
-        [&](const std::string& t){ CollectForms(t, exclude_locations); }
-    );
+        [&](const std::string& t) { CollectForms(t, locations); },
+        [&](const std::string& t) { CollectForms(t, exclude_locations); }
+        );
 
     // actors: numeric stay include-only
     for (const auto& a_formid : a_block.actors.get()) {
@@ -108,35 +105,35 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     // actors_str: support negation via '!'
     ForEachTokenSplitByNegation(
         a_block.actors_str.get(),
-        [&](const std::string& t){
+        [&](const std::string& t) {
             if (const auto id = FormReader::GetFormEditorIDFromString(t); id > 0) {
                 actors.insert(id);
             } else {
                 logger::warn("Failed to get actor form for string: {}", t);
             }
         },
-        [&](const std::string& t){
+        [&](const std::string& t) {
             if (const auto id = FormReader::GetFormEditorIDFromString(t); id > 0) {
                 exclude_actors.insert(id);
             } else {
                 logger::warn("Failed to get actor form for string: {}", t);
             }
         }
-    );
+        );
 
     // actor keywords: support negation via '!'
     ForEachTokenSplitByNegation(
         a_block.actor_keywords.get(),
-        [&](const std::string& t){ CollectForms(t, actor_keywords); },
-        [&](const std::string& t){ CollectForms(t, exclude_actor_keywords); }
-    );
+        [&](const std::string& t) { CollectForms(t, actor_keywords); },
+        [&](const std::string& t) { CollectForms(t, exclude_actor_keywords); }
+        );
 
     // conditions (perks): support negation via '!'
     ForEachTokenSplitByNegation(
         a_block.conditions.get(),
-        [&](const std::string& t){ CollectForms(t, conditions); },
-        [&](const std::string& t){ CollectForms(t, exclude_conditions); }
-    );
+        [&](const std::string& t) { CollectForms(t, conditions); },
+        [&](const std::string& t) { CollectForms(t, exclude_conditions); }
+        );
 
     for (const auto& node : a_block.hide_nodes.get()) {
         hide_nodes.push_back(node);
@@ -152,26 +149,25 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     // string form types: support negation via '!'
     ForEachTokenSplitByNegation(
         a_block.form_types_str.get(),
-        [&](const std::string& t){
+        [&](const std::string& t) {
             auto ft = RE::StringToFormType(t);
             if (ft < RE::FormType::Max && ft > RE::FormType::None) {
                 form_types.insert(ft);
             }
         },
-        [&](const std::string& t){
+        [&](const std::string& t) {
             auto ft = RE::StringToFormType(t);
             if (ft < RE::FormType::Max && ft > RE::FormType::None) {
                 exclude_form_types.insert(ft);
             }
         }
-    );
+        );
 
     delay = 0;
 
     if (const auto a_delay = a_block.delay_int.get(); a_delay > 0) {
         delay = a_delay;
-    }
-    else if (a_block.delay.get()) {
+    } else if (a_block.delay.get()) {
         int tot = 0;
         for (const auto dur : durations) {
             tot += dur;
@@ -182,47 +178,53 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     }
 }
 
-Presets::AnimEvent Presets::GetMenuAnimEvent(const std::string_view menu_name, const MenuAnimEventType a_type)
-{
+Presets::AnimEvent Presets::GetMenuAnimEvent(const std::string_view menu_name, const MenuAnimEventType a_type) {
     if (menu_name == RE::InventoryMenu::MENU_NAME) {
-        return a_type == kOpen ? kMenuOpenInventory :
-               a_type == kClose ? kMenuCloseInventory :
-                a_type == kHover ? kMenuHoverInventory : kNone;
+        return a_type == kOpen
+                   ? kMenuOpenInventory
+                   : a_type == kClose
+                   ? kMenuCloseInventory
+                   : a_type == kHover
+                   ? kMenuHoverInventory
+                   : kNone;
     }
     if (menu_name == RE::ContainerMenu::MENU_NAME) {
-        return a_type == kOpen ? kMenuOpenContainer :
-                a_type == kClose ? kMenuCloseContainer :
-                a_type == kHover ? kMenuHoverContainer : kNone;
+        return a_type == kOpen
+                   ? kMenuOpenContainer
+                   : a_type == kClose
+                   ? kMenuCloseContainer
+                   : a_type == kHover
+                   ? kMenuHoverContainer
+                   : kNone;
     }
     if (menu_name == RE::MagicMenu::MENU_NAME) {
-        return a_type == kOpen ? kMenuOpenMagic :
-                a_type == kClose ? kMenuCloseMagic : kNone;
+        return a_type == kOpen ? kMenuOpenMagic : a_type == kClose ? kMenuCloseMagic : kNone;
     }
     if (menu_name == RE::FavoritesMenu::MENU_NAME) {
-        return a_type == kOpen ? kMenuOpenFavorites :
-                a_type == kClose ? kMenuCloseFavorites : kNone;
+        return a_type == kOpen ? kMenuOpenFavorites : a_type == kClose ? kMenuCloseFavorites : kNone;
     }
     if (menu_name == RE::MapMenu::MENU_NAME) {
-        return a_type == kOpen ? kMenuOpenMap :
-                a_type == kClose ? kMenuCloseMap :kNone;
+        return a_type == kOpen ? kMenuOpenMap : a_type == kClose ? kMenuCloseMap : kNone;
     }
     if (menu_name == RE::BarterMenu::MENU_NAME) {
-        return a_type == kOpen ? kMenuOpenBarter :
-                a_type == kClose ? kMenuCloseBarter :
-                a_type == kHover ? kMenuHoverBarter : kNone;
+        return a_type == kOpen
+                   ? kMenuOpenBarter
+                   : a_type == kClose
+                   ? kMenuCloseBarter
+                   : a_type == kHover
+                   ? kMenuHoverBarter
+                   : kNone;
     }
     if (menu_name == RE::JournalMenu::MENU_NAME) {
-        return a_type == kOpen ? kMenuOpenJournal :
-                a_type == kClose ? kMenuCloseJournal : kNone;
+        return a_type == kOpen ? kMenuOpenJournal : a_type == kClose ? kMenuCloseJournal : kNone;
     }
     return kNone;
 }
 
 void Presets::Load() {
-
     if (loaded) {
         return;
-	}
+    }
 
     constexpr std::string_view animDataFolder = R"(Data\SKSE\Plugins\DAF\animData)";
     constexpr std::string_view formGroupsFolder = R"(Data\SKSE\Plugins\DAF\formGroups)";
@@ -232,8 +234,7 @@ void Presets::Load() {
         return;
     }
 
-	PresetHelpers::TXT_Helpers::GatherForms(std::string(formGroupsFolder));
-
+    PresetHelpers::TXT_Helpers::GatherForms(std::string(formGroupsFolder));
 
     // loop folder for folders
     for (const auto& entry : std::filesystem::directory_iterator(animDataFolder)) {
@@ -271,13 +272,12 @@ void Presets::Load() {
                 AnimData anim_data(data);
 
                 for (std::unique_lock lock(m_anim_data_);
-                    auto a_event_type : anim_data.events) {
+                     auto a_event_type : anim_data.events) {
                     anim_map[a_event_type].push_back(anim_data);
                 }
             }
         }
     }
 
-	loaded = true;
+    loaded = true;
 }
-
