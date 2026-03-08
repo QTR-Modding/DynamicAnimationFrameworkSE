@@ -4,66 +4,65 @@
 #include "Presets/PresetInterface.h"
 #include "Animator.h"
 
-class Manager : public clib_util::singleton::ISingleton<Manager>
-{
-
-	bool PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain);
+class Manager : public clib_util::singleton::ISingleton<Manager> {
+    bool PlayAnimation(RE::Actor* a_actor, const std::pair<DAF_API::AnimEventID, std::vector<Animation>>& anim_chain);
 
     static bool ActorCheck(const RE::Actor* a_actor);
 
-	struct ActorHandleHash {
-	    size_t operator() (const RE::ActorHandlePtr& actor_ptr) const noexcept;
+    struct ActorHandleHash {
+        size_t operator()(const RE::ActorHandlePtr& actor_ptr) const noexcept;
     };
 
-	struct ActorHandleEqual {
-	    bool operator() (const RE::ActorHandlePtr& lhs, const RE::ActorHandlePtr& rhs) const noexcept;
+    struct ActorHandleEqual {
+        bool operator()(const RE::ActorHandlePtr& lhs, const RE::ActorHandlePtr& rhs) const noexcept;
     };
 
     std::shared_mutex m_animators_;
-	std::unordered_map<RE::ActorHandlePtr,MyAnimator*,ActorHandleHash,ActorHandleEqual> animators;
+    std::unordered_map<RE::ActorHandlePtr, MyAnimator*, ActorHandleHash, ActorHandleEqual> animators;
 
-	struct Filter {
-	    RE::FormID actor_id;
-	    RE::TESForm* form = nullptr;
-	};
+    struct Filter {
+        RE::FormID actor_id;
+        RE::TESForm* form = nullptr;
+    };
 
     static Presets::AnimData GetAnimData(DAF_API::AnimEventID a_animevent, const Filter& filter);
 
-	std::map<std::string_view,bool> queued_menus;
+    std::map<std::string_view, bool> queued_menus;
 
-	struct AnimEventInfo {
-		DAF_API::AnimEventID event_id;
-		RE::TESObjectREFR* a_actor;
-	    RE::TESForm* a_item;
+    struct AnimEventInfo {
+        DAF_API::AnimEventID event_id;
+        RE::TESObjectREFR* a_actor;
+        RE::TESForm* a_item;
 
-	    AnimEventInfo(const DAF_API::AnimEventID a_event_id,
-					  RE::TESObjectREFR* a_actor,
-					  RE::TESForm* a_item=nullptr)
-			: event_id(a_event_id), a_actor(a_actor), a_item(a_item) {}
-	};
+        AnimEventInfo(const DAF_API::AnimEventID a_event_id,
+                      RE::TESObjectREFR* a_actor,
+                      RE::TESForm* a_item = nullptr)
+            : event_id(a_event_id), a_actor(a_actor), a_item(a_item) {
+        }
+    };
 
 public:
-
-	void PauseAnimators();
-	void ResumeAnimators();
-	int PlayAnimation(AnimEventInfo a_info);
+    void PauseAnimators();
+    void ResumeAnimators();
+    int PlayAnimation(AnimEventInfo a_info);
 
     void SetMenuQueued(std::string_view menu_name, bool for_open);
-	void UnSetMenuQueued(std::string_view menu_name);
-	[[nodiscard]] bool IsMenuQueued(std::string_view menu_name) const;
-	[[nodiscard]] bool IsMenuQueued(std::string_view menu_name, bool for_open) const;
+    void UnSetMenuQueued(std::string_view menu_name);
+    [[nodiscard]] bool IsMenuQueued(std::string_view menu_name) const;
+    [[nodiscard]] bool IsMenuQueued(std::string_view menu_name, bool for_open) const;
     static void OpenCloseMenu(std::string_view menu_name, bool open);
 
-	int OnActivate(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnPickup(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnDrop(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnEquip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnUnequip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnBuy(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-	int OnMenuOpenClose(std::string_view menu_name, bool opened);
-	int OnItemHover(std::string_view menu_name, const RE::StandardItemData* a_item_data);
+    int OnActivate(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnPickup(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnDrop(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnEquip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnUnequip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnBuy(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    int OnMagicEffectCast(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect);
+    int OnMagicEffectTarget(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect);
+    int OnMenuOpenClose(std::string_view menu_name, bool opened);
+    int OnItemHover(std::string_view menu_name, const RE::StandardItemData* a_item_data);
 };
-

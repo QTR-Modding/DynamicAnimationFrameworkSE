@@ -3,19 +3,18 @@
 #include "Presets/PresetInterface.h"
 
 // ReSharper disable once CppParameterMayBeConstPtrOrRef
-void OnMessage(SKSE::MessagingInterface::Message* message) {  // NOLINT(misc-use-internal-linkage)
+void OnMessage(SKSE::MessagingInterface::Message* message) { // NOLINT(misc-use-internal-linkage)
     if (message->type == SKSE::MessagingInterface::kDataLoaded) {
         Hooks::Install();
     }
     if (message->type == SKSE::MessagingInterface::kPreLoadGame ||
         message->type == SKSE::MessagingInterface::kNewGame) {
-		// to allow dynamic forms, we push this to a later stage after kDataLoaded
+        // to allow dynamic forms, we push this to a later stage after kDataLoaded
         Presets::Load();
     }
 }
 
 SKSEPluginLoad(const SKSE::LoadInterface *skse) {
-
     SetupLog();
     logger::info("Plugin loaded");
     SKSE::Init(skse);

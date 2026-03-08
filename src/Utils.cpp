@@ -43,7 +43,7 @@ const char* Utils::GetModelPath(RE::TESForm* a_form, [[maybe_unused]] RE::Actor*
         }
         case RE::FormType::Ingredient: {
             return a_form->As<RE::IngredientItem>()->GetModel();
-            }
+        }
         case RE::FormType::Book: {
             return a_form->As<RE::TESObjectBOOK>()->GetModel();
         }
@@ -75,23 +75,23 @@ const char* Utils::GetModelPath(RE::TESForm* a_form, [[maybe_unused]] RE::Actor*
             return a_form->As<RE::TESObjectTREE>()->GetModel();
         }
         case RE::FormType::Reference: {
-			const auto ref = a_form->AsReference();
-			return GetModelPath(ref->GetBaseObject());
+            const auto ref = a_form->AsReference();
+            return GetModelPath(ref->GetBaseObject());
         }
         default:
-			break;
+            break;
     }
-        
+
     return nullptr;
 }
 
 void Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) {
     if (const auto model_path = GetModelPath(a_form)) {
         RE::NiPointer<RE::NiNode> a_model;
-        if (const auto res = RE::BSModelDB::Demand(model_path,a_model,{}); 
+        if (const auto res = RE::BSModelDB::Demand(model_path, a_model, {});
             res == RE::BSResource::ErrorCode::kNone) {
             RE::NiAVObject* constructedObject = a_model && a_model.get() ? a_model.get() : nullptr;
-			a_out.reset(constructedObject);
+            a_out.reset(constructedObject);
         }
     }
 }
@@ -100,8 +100,8 @@ bool ModCompatibility::ModInfo::IsInstalled() {
     if (!is_checked) {
         const auto plugins_folder = "Data\\SKSE\\Plugins\\";
         const auto mod_path = std::string(plugins_folder) + name + ".dll";
-	    isLoaded = std::filesystem::exists(mod_path);
-		is_checked = true;
+        isLoaded = std::filesystem::exists(mod_path);
+        is_checked = true;
     }
-	return isLoaded;
+    return isLoaded;
 }
