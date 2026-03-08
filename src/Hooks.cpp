@@ -126,15 +126,12 @@ void Hooks::MagicEffectHooks::DispatchEffectAnimation(RE::ActiveEffect* a_effect
 
     const auto manager = Manager::GetSingleton();
 
-    if (const auto caster_ref = a_effect->caster.get()) {
-        if (const auto caster = caster_ref->As<RE::Actor>()) {
-            manager->OnMagicEffectCast(caster, base_effect);
-        }
+    if (const auto a_caster = a_effect->caster.get().get()) {
+        manager->OnMagicEffectCast(a_caster, base_effect);
     }
 
-    if (const auto target = a_effect->target ? a_effect->target->GetTargetStatsObject() : nullptr) {
-        auto a_actor = target ? target->As<RE::Actor>() : nullptr;
-        manager->OnMagicEffectTarget(a_actor, base_effect);
+    if (const auto a_target = a_effect->target ? a_effect->target->GetTargetStatsObject() : nullptr) {
+        manager->OnMagicEffectTarget(a_target, base_effect);
     }
 }
 
