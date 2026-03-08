@@ -290,6 +290,16 @@ int Manager::OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item)
     return PlayAnimation({Presets::AnimEvent::kSell,a_actor,a_item});
 }
 
+int Manager::OnMagicEffectCast(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect)
+{
+    return PlayAnimation({Presets::AnimEvent::kMagicEffectCast, a_actor, a_effect});
+}
+
+int Manager::OnMagicEffectTarget(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect)
+{
+    return PlayAnimation({Presets::AnimEvent::kMagicEffectTarget, a_actor, a_effect});
+}
+
 int Manager::OnMenuOpenClose(const std::string_view menu_name, const bool opened)
 {
     const auto player = RE::PlayerCharacter::GetSingleton();

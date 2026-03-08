@@ -72,6 +72,8 @@ namespace Presets {
 		kMenuOpenJournal,
 		kMenuCloseJournal,
 		//kPOVToggle,
+		kMagicEffectCast,
+		kMagicEffectTarget,
 		kTotal
 	};
 

@@ -9,6 +9,7 @@ void Hooks::Install()
 	MoveItemHooks<RE::PlayerCharacter>::install();
 	MoveItemHooks<RE::TESObjectREFR>::install(false);
 	MoveItemHooks<RE::Character>::install();
+	MagicEffectHooks::Install();
 
     MenuHook<RE::ContainerMenu>::InstallHook(RE::VTABLE_ContainerMenu[0]);
 	MenuHook<RE::InventoryMenu>::InstallHook(RE::VTABLE_InventoryMenu[0]);
@@ -95,6 +96,70 @@ void Hooks::DrawHook::thunk(std::uint32_t a_timer)
 	else {
         Manager::GetSingleton()->ResumeAnimators();
     }
+}
+
+void Hooks::MagicEffectHooks::Install()
+{
+    REL::Relocation<std::uintptr_t> value_modifier_vtbl{ RE::ValueModifierEffect::VTABLE[0] };
+    _value_modifier_effect = value_modifier_vtbl.write_vfunc(0x14, ValueModifierEffectCast);
+
+    REL::Relocation<std::uintptr_t> peak_value_modifier_vtbl{ RE::PeakValueModifierEffect::VTABLE[0] };
+    _peak_value_modifier_effect = peak_value_modifier_vtbl.write_vfunc(0x14, PeakValueModifierEffectCast);
+
+    REL::Relocation<std::uintptr_t> script_effect_vtbl{ RE::ScriptEffect::VTABLE[0] };
+    _script_effect = script_effect_vtbl.write_vfunc(0x14, ScriptEffectCast);
+
+    REL::Relocation<std::uintptr_t> calm_effect_vtbl{ RE::CalmEffect::VTABLE[0] };
+    _calm_effect = calm_effect_vtbl.write_vfunc(0x14, CalmEffectCast);
+}
+
+void Hooks::MagicEffectHooks::DispatchEffectAnimation(RE::ActiveEffect* a_effect)
+{
+    if (!a_effect) {
+        return;
+    }
+    
+    const auto base_effect = a_effect->GetBaseObject();
+    if (!base_effect) {
+        return;
+    }
+
+    const auto manager = Manager::GetSingleton();
+
+    if (const auto caster_ref = a_effect->caster.get()) {
+        if (const auto caster = caster_ref->As<RE::Actor>()) {
+            manager->OnMagicEffectCast(caster, base_effect);
+        }
+    }
+
+    if (const auto target = a_effect->target ? a_effect->target->GetTargetStatsObject() : nullptr) {
+        auto a_actor = target ? target->As<RE::Actor>() : nullptr;
+        manager->OnMagicEffectTarget(a_actor, base_effect);
+    }
+}
+
+void Hooks::MagicEffectHooks::ValueModifierEffectCast(RE::ValueModifierEffect* a_this)
+{
+    _value_modifier_effect(a_this);
+    DispatchEffectAnimation(a_this);
+}
+
+void Hooks::MagicEffectHooks::PeakValueModifierEffectCast(RE::PeakValueModifierEffect* a_this)
+{
+    _peak_value_modifier_effect(a_this);
+    DispatchEffectAnimation(a_this);
+}
+
+void Hooks::MagicEffectHooks::ScriptEffectCast(RE::ScriptEffect* a_this)
+{
+    _script_effect(a_this);
+    DispatchEffectAnimation(a_this);
+}
+
+void Hooks::MagicEffectHooks::CalmEffectCast(RE::CalmEffect* a_this)
+{
+    _calm_effect(a_this);
+    DispatchEffectAnimation(a_this);
 }
 
 template<typename RefType>
@@ -229,7 +294,7 @@ RE::UI_MESSAGE_RESULTS Hooks::MenuHook<MenuType>::ProcessMessage_Hook(RE::UIMess
                     a_manager->SetMenuQueued(menuname, is_opening);
 
                     if (is_opening && menuname == RE::ContainerMenu::MENU_NAME && refr.get()) {
-                        refr->OpenContainer(static_cast<std::int32_t>(container_mode));
+                        RE::ContainerMenu::OpenMenu(refr.get(), container_mode);
                     }
                     else {
 	                    a_manager->OpenCloseMenu(menuname, is_opening);
@@ -293,10 +358,10 @@ namespace {
     }
 
     RE::NiNode* GetAttachNode(RE::NiAVObject* animObjectMesh, const std::string& attach_node) {
-        auto* root = animObjectMesh->AsFadeNode();
+        auto root = animObjectMesh->AsFadeNode();
         RE::NiNode* defaultAttachNode = nullptr;
         if (root) {
-            if (auto* attachNode = root->GetObjectByName(attach_node)) {
+            if (auto attachNode = root->GetObjectByName(attach_node)) {
                 defaultAttachNode = attachNode->AsNode();
             }
         }
@@ -327,19 +392,19 @@ namespace {
             return nullptr;
         }
 
-        auto* node = GetAttachNode(original,attach_node_info.second);
+        auto node = GetAttachNode(original,attach_node_info.second);
 	    if (!node) {
 		    return nullptr;
 	    }
 
         const auto geometries = GetAllGeometries(variableMesh);
 
-        for (auto* geom : geometries) {
+        for (auto geom : geometries) {
             if (!geom) {
                 continue;
             }
 
-            auto* clone = Clone(geom);
+            auto clone = Clone(geom);
 
             node->AttachChild(clone, true);
         }
@@ -355,7 +420,7 @@ RE::NiAVObject* Hooks::AnimObjectHook::thunk(RE::TESModel* a_model, RE::BIPED_OB
     if (const auto animObject = adjust_pointer<RE::TESObjectANIO>(a_model->GetAsModelTextureSwap(), -0x20);
         animObject) {
         if (const auto actor_id = a_actor ? a_actor->GetFormID() : 0; item_meshes.contains(actor_id)) {
-            if (auto* containerMesh = GetVariableMesh(output,item_meshes.at(actor_id))) {
+            if (auto containerMesh = GetVariableMesh(output,item_meshes.at(actor_id))) {
                 output = containerMesh;
 				item_meshes.erase(actor_id);
             }

@@ -63,6 +63,8 @@ public:
 	int OnUnequip(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
 	int OnBuy(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
 	int OnSell(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+	int OnMagicEffectCast(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect);
+	int OnMagicEffectTarget(RE::TESObjectREFR* a_actor, RE::TESForm* a_effect);
 	int OnMenuOpenClose(std::string_view menu_name, bool opened);
 	int OnItemHover(std::string_view menu_name, const RE::StandardItemData* a_item_data);
 };

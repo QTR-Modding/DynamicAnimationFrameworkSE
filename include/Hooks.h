@@ -133,6 +133,26 @@ namespace Hooks {
 
     };
 
+    class MagicEffectHooks {
+    public:
+        static void Install();
+
+    private:
+        static void DispatchEffectAnimation(RE::ActiveEffect* a_effect);
+
+        static void ValueModifierEffectCast(RE::ValueModifierEffect* a_this);
+        static inline REL::Relocation<decltype(ValueModifierEffectCast)> _value_modifier_effect;
+
+        static void PeakValueModifierEffectCast(RE::PeakValueModifierEffect* a_this);
+        static inline REL::Relocation<decltype(PeakValueModifierEffectCast)> _peak_value_modifier_effect;
+
+        static void ScriptEffectCast(RE::ScriptEffect* a_this);
+        static inline REL::Relocation<decltype(ScriptEffectCast)> _script_effect;
+
+        static void CalmEffectCast(RE::CalmEffect* a_this);
+        static inline REL::Relocation<decltype(CalmEffectCast)> _calm_effect;
+    };
+
     class AnimObjectHook {
     public:
         static RE::NiAVObject* thunk(RE::TESModel* a_model, RE::BIPED_OBJECT a_bipedObj,
