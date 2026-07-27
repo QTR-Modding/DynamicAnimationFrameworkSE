@@ -1,7 +1,7 @@
 #include "Presets/PresetInterface.h"
 #include "Service.h"
 #include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
-
+#include <rapidjson/error/en.h>
 
 namespace {
     template <typename T>
@@ -264,7 +264,7 @@ void Presets::Load() {
                 ifs.close();
                 doc.Parse(json_str.c_str());
                 if (doc.HasParseError()) {
-                    logger::error("JSON Parse Error at offset {}: {}", doc.GetErrorOffset(), doc.GetParseError());
+                    logger::error("JSON Parse Error at offset {}: {}", doc.GetErrorOffset(), rapidjson::GetParseError_En(doc.GetParseError()));
                     continue;
                 }
                 AnimDataBlock data;
