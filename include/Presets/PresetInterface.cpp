@@ -32,15 +32,35 @@ namespace {
         return false;
     }
 
-    template <typename FInc, typename FExc>
-    void ForEachTokenSplitByNegation(const std::vector<std::string>& arr, const FInc& inc, const FExc& exc) {
-        for (const auto& s : arr) {
+    template <typename T, typename F>
+    bool CollectFilterTokens(
+        const std::vector<std::string>& tokens,
+        std::unordered_set<T>& includes,
+        std::unordered_set<T>& excludes,
+        const F& collect,
+        bool has_include = false) {
+        for (const auto& s : tokens) {
             if (std::string_view tok; IsNegatedToken(s, tok)) {
-                exc(std::string(tok));
+                collect(std::string(tok), excludes);
             } else {
-                inc(std::string(tok));
+                has_include = true;
+                collect(std::string(tok), includes);
             }
         }
+        // Omitted and exclusion-only filters are valid; an include needs at least one resolved value.
+        return !has_include || !includes.empty();
+    }
+
+    template <typename T>
+    bool CollectFormFilters(
+        const std::vector<std::string>& tokens,
+        std::unordered_set<T*>& includes,
+        std::unordered_set<T*>& excludes) {
+        return CollectFilterTokens(
+            tokens,
+            includes,
+            excludes,
+            [](const std::string& token, auto& container) { CollectForms(token, container); });
     }
 }
 
@@ -77,91 +97,56 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
         events.insert(a_eventid);
     }
 
-    // keywords: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.keywords.get(),
-        [&](const std::string& t) { CollectForms(t, keywords); },
-        [&](const std::string& t) { CollectForms(t, exclude_keywords); }
-        );
-
-    // forms: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.forms.get(),
-        [&](const std::string& t) { CollectForms(t, forms); },
-        [&](const std::string& t) { CollectForms(t, exclude_forms); }
-        );
-
-    // locations: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.locations.get(),
-        [&](const std::string& t) { CollectForms(t, locations); },
-        [&](const std::string& t) { CollectForms(t, exclude_locations); }
-        );
+    include_filters_valid &= CollectFormFilters(a_block.keywords.get(), keywords, exclude_keywords);
+    include_filters_valid &= CollectFormFilters(a_block.forms.get(), forms, exclude_forms);
+    include_filters_valid &= CollectFormFilters(a_block.locations.get(), locations, exclude_locations);
 
     // actors: numeric stay include-only
-    for (const auto& a_formid : a_block.actors.get()) {
+    const auto actor_ids = a_block.actors.get();
+    for (const auto& a_formid : actor_ids) {
         actors.insert(a_formid);
     }
     // actors_str: support negation via '!'
-    ForEachTokenSplitByNegation(
+    include_filters_valid &= CollectFilterTokens(
         a_block.actors_str.get(),
-        [&](const std::string& t) {
-            if (const auto id = FormReader::GetFormEditorIDFromString(t); id > 0) {
-                actors.insert(id);
+        actors,
+        exclude_actors,
+        [](const std::string& token, auto& container) {
+            if (const auto id = FormReader::GetFormEditorIDFromString(token); id > 0) {
+                container.insert(id);
             } else {
-                logger::warn("Failed to get actor form for string: {}", t);
+                logger::warn("Failed to get actor form for string: {}", token);
             }
         },
-        [&](const std::string& t) {
-            if (const auto id = FormReader::GetFormEditorIDFromString(t); id > 0) {
-                exclude_actors.insert(id);
-            } else {
-                logger::warn("Failed to get actor form for string: {}", t);
-            }
-        }
-        );
+        !actor_ids.empty());
 
-    // actor keywords: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.actor_keywords.get(),
-        [&](const std::string& t) { CollectForms(t, actor_keywords); },
-        [&](const std::string& t) { CollectForms(t, exclude_actor_keywords); }
-        );
-
-    // conditions (perks): support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.conditions.get(),
-        [&](const std::string& t) { CollectForms(t, conditions); },
-        [&](const std::string& t) { CollectForms(t, exclude_conditions); }
-        );
+    include_filters_valid &= CollectFormFilters(a_block.actor_keywords.get(), actor_keywords, exclude_actor_keywords);
+    include_filters_valid &= CollectFormFilters(a_block.conditions.get(), conditions, exclude_conditions);
 
     for (const auto& node : a_block.hide_nodes.get()) {
         hide_nodes.push_back(node);
     }
 
     // numeric form types: include only
-    for (const auto& form_type : a_block.form_types.get()) {
+    const auto numeric_form_types = a_block.form_types.get();
+    for (const auto& form_type : numeric_form_types) {
         if (form_type < static_cast<int>(RE::FormType::Max) && form_type > static_cast<int>(RE::FormType::None)) {
             form_types.insert(static_cast<RE::FormType>(form_type));
         }
     }
 
     // string form types: support negation via '!'
-    ForEachTokenSplitByNegation(
+    include_filters_valid &= CollectFilterTokens(
         a_block.form_types_str.get(),
-        [&](const std::string& t) {
-            auto ft = RE::StringToFormType(t);
+        form_types,
+        exclude_form_types,
+        [](const std::string& token, auto& container) {
+            auto ft = RE::StringToFormType(token);
             if (ft < RE::FormType::Max && ft > RE::FormType::None) {
-                form_types.insert(ft);
+                container.insert(ft);
             }
         },
-        [&](const std::string& t) {
-            auto ft = RE::StringToFormType(t);
-            if (ft < RE::FormType::Max && ft > RE::FormType::None) {
-                exclude_form_types.insert(ft);
-            }
-        }
-        );
+        !numeric_form_types.empty());
 
     delay = 0;
 
@@ -270,6 +255,11 @@ void Presets::Load() {
                 AnimDataBlock data;
                 data.load(doc);
                 AnimData anim_data(data);
+
+                if (!anim_data.include_filters_valid) {
+                    logger::warn("Skipping preset with an unresolved include filter: {}", file.path().string());
+                    continue;
+                }
 
                 for (std::unique_lock lock(m_anim_data_);
                      auto a_event_type : anim_data.events) {
