@@ -5,6 +5,18 @@
 
 namespace {
     template <typename T>
+    T* FindDynamicFormByEditorID(const std::string& editor_id) {
+        for (const auto& a_form : RE::TESDataHandler::GetSingleton()->GetFormArray<T>()) {
+            if (a_form->IsDynamicForm()) {
+                if (a_form && clib_util::editorID::get_editorID(a_form) == editor_id) {
+                    return a_form;
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    template <typename T>
     bool CollectForms(const std::string& form_string, std::unordered_set<T*>& a_container) {
         std::shared_lock lock(PresetHelpers::formGroups_mutex_);
         if (const auto it = PresetHelpers::formGroups.find(form_string); it != PresetHelpers::formGroups.end()) {
@@ -27,6 +39,8 @@ namespace {
                 logger::warn("Failed to get form for string: {}", form_string);
                 return false;
             }
+        } else if (auto a_form = FindDynamicFormByEditorID<T>(form_string)) {
+            a_container.insert(a_form);
         } else {
             logger::warn("Failed to get form ID for string: {}", form_string);
             return false;
@@ -46,6 +60,8 @@ namespace {
             }
         } else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid > 0) {
             a_container.insert(a_formid);
+        } else if (const auto a_form = FindDynamicFormByEditorID<RE::TESForm>(form_string)) {
+            a_container.insert(a_form->GetFormID());
         } else {
             logger::warn("Failed to get form ID for string: {}", form_string);
             return false;
