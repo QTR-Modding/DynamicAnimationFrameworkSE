@@ -112,7 +112,7 @@ namespace Presets {
         std::unordered_set<RE::BGSPerk*> conditions;
         // internal container populated from conditions tokens prefixed with '!'
         std::unordered_set<RE::BGSPerk*> exclude_conditions;
-        bool include_filters_valid{ true };
+        bool include_filters_valid{true};
 
         std::string attach_node;
         std::vector<std::string> hide_nodes; // TODO: implement

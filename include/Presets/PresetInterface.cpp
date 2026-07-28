@@ -93,7 +93,7 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     }
 
     if (const auto& type_custom = a_block.event_type_custom.get(); !type_custom.empty()) {
-        auto a_eventid = Service::AddCustomEvent(a_block.event_type_custom.get());
+        const auto a_eventid = Service::AddCustomEvent(a_block.event_type_custom.get());
         events.insert(a_eventid);
     }
 
@@ -249,7 +249,8 @@ void Presets::Load() {
                 ifs.close();
                 doc.Parse(json_str.c_str());
                 if (doc.HasParseError()) {
-                    logger::error("JSON Parse Error at offset {}: {}", doc.GetErrorOffset(), rapidjson::GetParseError_En(doc.GetParseError()));
+                    logger::error("JSON Parse Error at offset {}: {}", doc.GetErrorOffset(),
+                                  rapidjson::GetParseError_En(doc.GetParseError()));
                     continue;
                 }
                 AnimDataBlock data;
