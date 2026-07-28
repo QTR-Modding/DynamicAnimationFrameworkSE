@@ -65,7 +65,7 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
                     if (const auto actor_id = actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
                         // ReSharper disable once CppTooWideScopeInitStatement
                         RE::NiPointer<RE::NiAVObject> a_model;
-                        if (Utils::GetModel(a_info.a_item, a_model); a_model) {
+                        if (const auto a_item = a_info.a_item; a_item && Utils::GetModel(a_item, a_model)) {
                             Hooks::item_meshes[actor_id] = {a_model, attach_node};
                         }
                     }
