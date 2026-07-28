@@ -27,7 +27,7 @@ namespace Utils {
     RE::StandardItemData* GetSelectedItemDataInMenu(std::string& a_menuOut);
 
     const char* GetModelPath(RE::TESForm* a_form, RE::Actor* a_actor = nullptr);
-    void GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out);
+    bool GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out);
 }
 
 namespace ModCompatibility {

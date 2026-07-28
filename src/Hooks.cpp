@@ -359,10 +359,10 @@ namespace {
     }
 
     RE::NiNode* GetAttachNode(RE::NiAVObject* animObjectMesh, const std::string& attach_node) {
-        auto root = animObjectMesh->AsFadeNode();
+        const auto root = animObjectMesh->AsFadeNode();
         RE::NiNode* defaultAttachNode = nullptr;
         if (root) {
-            if (auto attachNode = root->GetObjectByName(attach_node)) {
+            if (const auto attachNode = root->GetObjectByName(attach_node)) {
                 defaultAttachNode = attachNode->AsNode();
             }
         }
@@ -394,19 +394,19 @@ namespace {
             return nullptr;
         }
 
-        auto node = GetAttachNode(original, attach_node_info.second);
+        const auto node = GetAttachNode(original, attach_node_info.second);
         if (!node) {
             return nullptr;
         }
 
         const auto geometries = GetAllGeometries(variableMesh);
 
-        for (auto geom : geometries) {
+        for (const auto geom : geometries) {
             if (!geom) {
                 continue;
             }
 
-            auto clone = Clone(geom);
+            const auto clone = Clone(geom);
 
             node->AttachChild(clone, true);
         }
@@ -421,7 +421,7 @@ RE::NiAVObject* Hooks::AnimObjectHook::thunk(RE::TESModel* a_model, RE::BIPED_OB
     if (const auto animObject = adjust_pointer<RE::TESObjectANIO>(a_model->GetAsModelTextureSwap(), -0x20);
         animObject) {
         if (const auto actor_id = a_actor ? a_actor->GetFormID() : 0; item_meshes.contains(actor_id)) {
-            if (auto containerMesh = GetVariableMesh(output, item_meshes.at(actor_id))) {
+            if (const auto containerMesh = GetVariableMesh(output, item_meshes.at(actor_id))) {
                 output = containerMesh;
                 item_meshes.erase(actor_id);
             }

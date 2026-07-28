@@ -85,15 +85,21 @@ const char* Utils::GetModelPath(RE::TESForm* a_form, [[maybe_unused]] RE::Actor*
     return nullptr;
 }
 
-void Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) {
+bool Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) {
     if (const auto model_path = GetModelPath(a_form)) {
         RE::NiPointer<RE::NiNode> a_model;
         if (const auto res = RE::BSModelDB::Demand(model_path, a_model, {});
             res == RE::BSResource::ErrorCode::kNone) {
-            RE::NiAVObject* constructedObject = a_model && a_model.get() ? a_model.get() : nullptr;
-            a_out.reset(constructedObject);
+            if (RE::NiAVObject* constructedObject = a_model && a_model.get() ? a_model.get() : nullptr) {
+                a_out.reset(constructedObject);
+                return true;
+            }
+        } else {
+            logger::warn("Failed to load model for form {}: {}. Error: {}", a_form->GetFormID(), model_path,
+                         static_cast<int>(res));
         }
     }
+    return false;
 }
 
 bool ModCompatibility::ModInfo::IsInstalled() {
