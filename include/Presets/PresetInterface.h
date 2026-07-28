@@ -112,7 +112,6 @@ namespace Presets {
         std::unordered_set<RE::BGSPerk*> conditions;
         // internal container populated from conditions tokens prefixed with '!'
         std::unordered_set<RE::BGSPerk*> exclude_conditions;
-        bool include_filters_valid{true};
 
         std::string attach_node;
         std::vector<std::string> hide_nodes; // TODO: implement
@@ -120,7 +119,7 @@ namespace Presets {
         int delay;
 
         AnimData() = default;
-        explicit AnimData(AnimDataBlock& a_block);
+        [[nodiscard]] bool TryLoad(AnimDataBlock& a_block);
     };
 
     inline std::shared_mutex m_anim_data_;

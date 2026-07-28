@@ -32,6 +32,21 @@ namespace {
         return false;
     }
 
+    void CollectActorFormID(const std::string& token, std::unordered_set<RE::FormID>& container) {
+        if (const auto id = FormReader::GetFormEditorIDFromString(token); id > 0) {
+            container.insert(id);
+        } else {
+            logger::warn("Failed to get actor form for string: {}", token);
+        }
+    }
+
+    void CollectFormType(const std::string& token, std::unordered_set<RE::FormType>& container) {
+        const auto form_type = RE::StringToFormType(token);
+        if (form_type < RE::FormType::Max && form_type > RE::FormType::None) {
+            container.insert(form_type);
+        }
+    }
+
     template <typename T, typename F>
     bool CollectFilterTokens(
         const std::vector<std::string>& tokens,
@@ -64,7 +79,35 @@ namespace {
     }
 }
 
-Presets::AnimData::AnimData(AnimDataBlock& a_block) {
+bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
+    const auto actor_ids = a_block.actors.get();
+    actors.insert(actor_ids.begin(), actor_ids.end());
+
+    const auto numeric_form_types = a_block.form_types.get();
+    for (const auto& form_type : numeric_form_types) {
+        if (form_type < static_cast<int>(RE::FormType::Max) && form_type > static_cast<int>(RE::FormType::None)) {
+            form_types.insert(static_cast<RE::FormType>(form_type));
+        }
+    }
+
+    const bool filters_valid =
+        CollectFormFilters(a_block.keywords.get(), keywords, exclude_keywords) &&
+        CollectFormFilters(a_block.forms.get(), forms, exclude_forms) &&
+        CollectFormFilters(a_block.locations.get(), locations, exclude_locations) &&
+        CollectFilterTokens(
+            a_block.actors_str.get(), actors, exclude_actors, CollectActorFormID, !actor_ids.empty()) &&
+        CollectFormFilters(a_block.actor_keywords.get(), actor_keywords, exclude_actor_keywords) &&
+        CollectFormFilters(a_block.conditions.get(), conditions, exclude_conditions) &&
+        CollectFilterTokens(
+            a_block.form_types_str.get(),
+            form_types,
+            exclude_form_types,
+            CollectFormType,
+            !numeric_form_types.empty());
+    if (!filters_valid) {
+        return false;
+    }
+
     priority = a_block.priority.get();
 
     const auto names = a_block.anim_names.get();
@@ -97,56 +140,9 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
         events.insert(a_eventid);
     }
 
-    include_filters_valid &= CollectFormFilters(a_block.keywords.get(), keywords, exclude_keywords);
-    include_filters_valid &= CollectFormFilters(a_block.forms.get(), forms, exclude_forms);
-    include_filters_valid &= CollectFormFilters(a_block.locations.get(), locations, exclude_locations);
-
-    // actors: numeric stay include-only
-    const auto actor_ids = a_block.actors.get();
-    for (const auto& a_formid : actor_ids) {
-        actors.insert(a_formid);
-    }
-    // actors_str: support negation via '!'
-    include_filters_valid &= CollectFilterTokens(
-        a_block.actors_str.get(),
-        actors,
-        exclude_actors,
-        [](const std::string& token, auto& container) {
-            if (const auto id = FormReader::GetFormEditorIDFromString(token); id > 0) {
-                container.insert(id);
-            } else {
-                logger::warn("Failed to get actor form for string: {}", token);
-            }
-        },
-        !actor_ids.empty());
-
-    include_filters_valid &= CollectFormFilters(a_block.actor_keywords.get(), actor_keywords, exclude_actor_keywords);
-    include_filters_valid &= CollectFormFilters(a_block.conditions.get(), conditions, exclude_conditions);
-
     for (const auto& node : a_block.hide_nodes.get()) {
         hide_nodes.push_back(node);
     }
-
-    // numeric form types: include only
-    const auto numeric_form_types = a_block.form_types.get();
-    for (const auto& form_type : numeric_form_types) {
-        if (form_type < static_cast<int>(RE::FormType::Max) && form_type > static_cast<int>(RE::FormType::None)) {
-            form_types.insert(static_cast<RE::FormType>(form_type));
-        }
-    }
-
-    // string form types: support negation via '!'
-    include_filters_valid &= CollectFilterTokens(
-        a_block.form_types_str.get(),
-        form_types,
-        exclude_form_types,
-        [](const std::string& token, auto& container) {
-            auto ft = RE::StringToFormType(token);
-            if (ft < RE::FormType::Max && ft > RE::FormType::None) {
-                container.insert(ft);
-            }
-        },
-        !numeric_form_types.empty());
 
     delay = 0;
 
@@ -161,6 +157,7 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
             delay = tot;
         }
     }
+    return true;
 }
 
 Presets::AnimEvent Presets::GetMenuAnimEvent(const std::string_view menu_name, const MenuAnimEventType a_type) {
@@ -255,9 +252,9 @@ void Presets::Load() {
                 }
                 AnimDataBlock data;
                 data.load(doc);
-                AnimData anim_data(data);
+                AnimData anim_data;
 
-                if (!anim_data.include_filters_valid) {
+                if (!anim_data.TryLoad(data)) {
                     logger::warn("Skipping preset with an unresolved include filter: {}", file.path().string());
                     continue;
                 }
