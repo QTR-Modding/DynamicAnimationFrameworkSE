@@ -6,8 +6,13 @@
 namespace {
     template <typename T>
     bool CollectForms(const std::string& form_string, std::unordered_set<T*>& a_container) {
-        if (std::shared_lock lock(PresetHelpers::formGroups_mutex_); PresetHelpers::formGroups.contains(form_string)) {
-            for (auto a_formid : PresetHelpers::formGroups.at(form_string)) {
+        std::shared_lock lock(PresetHelpers::formGroups_mutex_);
+        if (const auto it = PresetHelpers::formGroups.find(form_string); it != PresetHelpers::formGroups.end()) {
+            if (it->second.empty()) {
+                logger::warn("Form group '{}' is empty.", form_string);
+                return false;
+            }
+            for (auto a_formid : it->second) {
                 if (auto a_form = RE::TESForm::LookupByID<T>(a_formid)) {
                     a_container.insert(a_form);
                 } else {
@@ -22,13 +27,21 @@ namespace {
                 logger::warn("Failed to get form for string: {}", form_string);
                 return false;
             }
+        } else {
+            logger::warn("Failed to get form ID for string: {}", form_string);
+            return false;
         }
         return true;
     }
 
     bool CollectFormIDs(const std::string& form_string, std::unordered_set<RE::FormID>& a_container) {
-        if (std::shared_lock lock(PresetHelpers::formGroups_mutex_); PresetHelpers::formGroups.contains(form_string)) {
-            for (auto a_formid : PresetHelpers::formGroups.at(form_string)) {
+        std::shared_lock lock(PresetHelpers::formGroups_mutex_);
+        if (const auto it = PresetHelpers::formGroups.find(form_string); it != PresetHelpers::formGroups.end()) {
+            if (it->second.empty()) {
+                logger::warn("Form group '{}' is empty.", form_string);
+                return false;
+            }
+            for (auto a_formid : it->second) {
                 a_container.insert(a_formid);
             }
         } else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid > 0) {
@@ -284,11 +297,14 @@ void Presets::Load() {
                     continue;
                 }
                 AnimDataBlock data;
-                data.load(doc);
+                if (!data.load(doc)) {
+                    logger::error("Failed to load preset data; skipping file: {}", file.path().string());
+                    continue;
+                }
                 AnimData anim_data;
 
                 if (!anim_data.TryLoad(data)) {
-                    logger::warn("Skipping preset with an unresolved include filter: {}", file.path().string());
+                    logger::error("Failed to load preset; skipping file: {}", file.path().string());
                     continue;
                 }
 

@@ -34,10 +34,13 @@ namespace Presets {
         Field<bool, rapidjson::Value> delay = {"delay", false};
         Field<int, rapidjson::Value> delay_int = {"delay", 0};
 
-        void load(rapidjson::Value& a_block) {
+        bool load(rapidjson::Value& a_block) {
             boost::pfr::for_each_field(*this, [&](auto& field) {
-                field.load(a_block);
+                if (!field.load(a_block)) {
+                    return false;
+                }
             });
+            return true;
         }
     };
 
