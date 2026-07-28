@@ -6,6 +6,9 @@
 namespace {
     template <typename T>
     T* FindDynamicFormByEditorID(const std::string& editor_id) {
+        if (editor_id.empty()) {
+            return nullptr;
+        }
         for (const auto& a_form : RE::TESDataHandler::GetSingleton()->GetFormArray<T>()) {
             if (a_form && a_form->IsDynamicForm()) {
                 if (clib_util::editorID::get_editorID(a_form) == editor_id) {
