@@ -5,13 +5,34 @@
 
 namespace {
     template <typename T>
-    void CollectForms(const std::string& form_string, std::unordered_set<T*>& a_container) {
-        if (std::shared_lock lock(PresetHelpers::formGroups_mutex_); PresetHelpers::formGroups.contains(form_string)) {
-            for (auto a_formid : PresetHelpers::formGroups.at(form_string)) {
+    T* FindDynamicFormByEditorID(const std::string& editor_id) {
+        if (editor_id.empty()) {
+            return nullptr;
+        }
+        for (const auto& a_form : RE::TESDataHandler::GetSingleton()->GetFormArray<T>()) {
+            if (a_form && a_form->IsDynamicForm()) {
+                if (clib_util::editorID::get_editorID(a_form) == editor_id) {
+                    return a_form;
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    template <typename T>
+    bool CollectForms(const std::string& form_string, std::unordered_set<T*>& a_container) {
+        std::shared_lock lock(PresetHelpers::formGroups_mutex_);
+        if (const auto it = PresetHelpers::formGroups.find(form_string); it != PresetHelpers::formGroups.end()) {
+            if (it->second.empty()) {
+                logger::warn("Form group '{}' is empty.", form_string);
+                return false;
+            }
+            for (auto a_formid : it->second) {
                 if (auto a_form = RE::TESForm::LookupByID<T>(a_formid)) {
                     a_container.insert(a_form);
                 } else {
                     logger::warn("Failed to get form for string: {}", form_string);
+                    return false;
                 }
             }
         } else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid > 0) {
@@ -19,10 +40,39 @@ namespace {
                 a_container.insert(a_form);
             } else {
                 logger::warn("Failed to get form for string: {}", form_string);
+                return false;
             }
+        } else if (auto a_form = FindDynamicFormByEditorID<T>(form_string)) {
+            a_container.insert(a_form);
+        } else {
+            logger::warn("Failed to get form ID for string: {}", form_string);
+            return false;
         }
+        return true;
     }
 
+    bool CollectFormIDs(const std::string& form_string, std::unordered_set<RE::FormID>& a_container) {
+        std::shared_lock lock(PresetHelpers::formGroups_mutex_);
+        if (const auto it = PresetHelpers::formGroups.find(form_string); it != PresetHelpers::formGroups.end()) {
+            if (it->second.empty()) {
+                logger::warn("Form group '{}' is empty.", form_string);
+                return false;
+            }
+            for (auto a_formid : it->second) {
+                a_container.insert(a_formid);
+            }
+        } else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid > 0) {
+            a_container.insert(a_formid);
+        } else if (const auto a_form = FindDynamicFormByEditorID<RE::TESForm>(form_string)) {
+            a_container.insert(a_form->GetFormID());
+        } else {
+            logger::warn("Failed to get form ID for string: {}", form_string);
+            return false;
+        }
+        return true;
+    }
+
+    // Returns true if the token is negated (starts with '!'), and sets 'out' to the token without the negation prefix.
     bool IsNegatedToken(const std::string& s, std::string_view& out) {
         if (!s.empty() && s.front() == '!') {
             out = std::string_view(s).substr(1);
@@ -32,19 +82,93 @@ namespace {
         return false;
     }
 
-    template <typename FInc, typename FExc>
-    void ForEachTokenSplitByNegation(const std::vector<std::string>& arr, const FInc& inc, const FExc& exc) {
-        for (const auto& s : arr) {
-            if (std::string_view tok; IsNegatedToken(s, tok)) {
-                exc(std::string(tok));
-            } else {
-                inc(std::string(tok));
+    bool CollectFormType(const std::string& token, std::unordered_set<RE::FormType>& container) {
+        if (const auto form_type = RE::StringToFormType(token);
+            form_type < RE::FormType::Max && form_type > RE::FormType::None) {
+            container.insert(form_type);
+        } else {
+            logger::warn("Invalid form type string: {}", token);
+            return false;
+        }
+        return true;
+    }
+
+    template <typename T, typename F>
+    bool CollectFilterTokens(const std::vector<std::string>& tokens, std::unordered_set<T>& includes,
+                             std::unordered_set<T>& excludes, const F& collect) {
+        for (const auto& value : tokens) {
+            std::string_view token;
+            if (auto& container = IsNegatedToken(value, token) ? excludes : includes;
+                !collect(std::string(token), container)) {
+                return false;
             }
         }
+        return true;
+    }
+
+    template <typename T>
+    bool CollectFormFilters(
+        const std::vector<std::string>& tokens,
+        std::unordered_set<T*>& includes,
+        std::unordered_set<T*>& excludes) {
+        return CollectFilterTokens(
+            tokens,
+            includes,
+            excludes,
+            [](const std::string& token, auto& container) { return CollectForms(token, container); });
+    }
+
+    bool CollectFormIDFilters(const std::vector<std::string>& tokens, std::unordered_set<RE::FormID>& includes,
+                              std::unordered_set<RE::FormID>& excludes) {
+        return CollectFilterTokens(
+            tokens,
+            includes,
+            excludes, [](const std::string& token, auto& container) {
+                return CollectFormIDs(token, container);
+            });
+    }
+
+    bool CollectFormTypeFilters(const std::vector<std::string>& tokens, std::unordered_set<RE::FormType>& includes,
+                                std::unordered_set<RE::FormType>& excludes) {
+        return CollectFilterTokens(
+            tokens,
+            includes,
+            excludes,
+            [](const std::string& token, auto& container) {
+                return CollectFormType(token, container);
+            });
     }
 }
 
-Presets::AnimData::AnimData(AnimDataBlock& a_block) {
+bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
+    constexpr auto formtype_index_max = static_cast<int>(RE::FormType::Max);
+    constexpr auto formtype_index_min = static_cast<int>(RE::FormType::None);
+
+    const auto actor_ids = a_block.actors.get();
+    actors.insert(actor_ids.begin(), actor_ids.end());
+
+    for (const auto numeric_form_types = a_block.form_types.get();
+         const auto& form_type : numeric_form_types) {
+        if (form_type < formtype_index_max && form_type > formtype_index_min) {
+            form_types.insert(static_cast<RE::FormType>(form_type));
+        } else {
+            logger::warn("Invalid form type index: {}", form_type);
+            return false;
+        }
+    }
+
+    const bool filters_valid =
+        CollectFormFilters(a_block.keywords.get(), keywords, exclude_keywords) &&
+        CollectFormFilters(a_block.forms.get(), forms, exclude_forms) &&
+        CollectFormFilters(a_block.locations.get(), locations, exclude_locations) &&
+        CollectFormIDFilters(a_block.actors_str.get(), actors, exclude_actors) &&
+        CollectFormFilters(a_block.actor_keywords.get(), actor_keywords, exclude_actor_keywords) &&
+        CollectFormFilters(a_block.conditions.get(), conditions, exclude_conditions) &&
+        CollectFormTypeFilters(a_block.form_types_str.get(), form_types, exclude_form_types);
+    if (!filters_valid) {
+        return false;
+    }
+
     priority = a_block.priority.get();
 
     const auto names = a_block.anim_names.get();
@@ -69,99 +193,21 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
     for (const auto& type : a_block.event_type.get()) {
         if (type < kTotal && type > kNone) {
             events.insert(type);
+        } else {
+            logger::warn("Invalid event type index: {}", type);
+            return false;
         }
     }
 
-    if (const auto& type_custom = a_block.event_type_custom.get(); !type_custom.empty()) {
-        auto a_eventid = Service::AddCustomEvent(a_block.event_type_custom.get());
+    if (const auto& type_custom = a_block.event_type_custom.get();
+        !type_custom.empty()) {
+        const auto a_eventid = Service::AddCustomEvent(a_block.event_type_custom.get());
         events.insert(a_eventid);
     }
-
-    // keywords: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.keywords.get(),
-        [&](const std::string& t) { CollectForms(t, keywords); },
-        [&](const std::string& t) { CollectForms(t, exclude_keywords); }
-        );
-
-    // forms: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.forms.get(),
-        [&](const std::string& t) { CollectForms(t, forms); },
-        [&](const std::string& t) { CollectForms(t, exclude_forms); }
-        );
-
-    // locations: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.locations.get(),
-        [&](const std::string& t) { CollectForms(t, locations); },
-        [&](const std::string& t) { CollectForms(t, exclude_locations); }
-        );
-
-    // actors: numeric stay include-only
-    for (const auto& a_formid : a_block.actors.get()) {
-        actors.insert(a_formid);
-    }
-    // actors_str: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.actors_str.get(),
-        [&](const std::string& t) {
-            if (const auto id = FormReader::GetFormEditorIDFromString(t); id > 0) {
-                actors.insert(id);
-            } else {
-                logger::warn("Failed to get actor form for string: {}", t);
-            }
-        },
-        [&](const std::string& t) {
-            if (const auto id = FormReader::GetFormEditorIDFromString(t); id > 0) {
-                exclude_actors.insert(id);
-            } else {
-                logger::warn("Failed to get actor form for string: {}", t);
-            }
-        }
-        );
-
-    // actor keywords: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.actor_keywords.get(),
-        [&](const std::string& t) { CollectForms(t, actor_keywords); },
-        [&](const std::string& t) { CollectForms(t, exclude_actor_keywords); }
-        );
-
-    // conditions (perks): support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.conditions.get(),
-        [&](const std::string& t) { CollectForms(t, conditions); },
-        [&](const std::string& t) { CollectForms(t, exclude_conditions); }
-        );
 
     for (const auto& node : a_block.hide_nodes.get()) {
         hide_nodes.push_back(node);
     }
-
-    // numeric form types: include only
-    for (const auto& form_type : a_block.form_types.get()) {
-        if (form_type < static_cast<int>(RE::FormType::Max) && form_type > static_cast<int>(RE::FormType::None)) {
-            form_types.insert(static_cast<RE::FormType>(form_type));
-        }
-    }
-
-    // string form types: support negation via '!'
-    ForEachTokenSplitByNegation(
-        a_block.form_types_str.get(),
-        [&](const std::string& t) {
-            auto ft = RE::StringToFormType(t);
-            if (ft < RE::FormType::Max && ft > RE::FormType::None) {
-                form_types.insert(ft);
-            }
-        },
-        [&](const std::string& t) {
-            auto ft = RE::StringToFormType(t);
-            if (ft < RE::FormType::Max && ft > RE::FormType::None) {
-                exclude_form_types.insert(ft);
-            }
-        }
-        );
 
     delay = 0;
 
@@ -176,6 +222,7 @@ Presets::AnimData::AnimData(AnimDataBlock& a_block) {
             delay = tot;
         }
     }
+    return true;
 }
 
 Presets::AnimEvent Presets::GetMenuAnimEvent(const std::string_view menu_name, const MenuAnimEventType a_type) {
@@ -264,12 +311,18 @@ void Presets::Load() {
                 ifs.close();
                 doc.Parse(json_str.c_str());
                 if (doc.HasParseError()) {
-                    logger::error("JSON Parse Error at offset {}: {}", doc.GetErrorOffset(), rapidjson::GetParseError_En(doc.GetParseError()));
+                    logger::error("JSON Parse Error at offset {}: {}", doc.GetErrorOffset(),
+                                  rapidjson::GetParseError_En(doc.GetParseError()));
                     continue;
                 }
                 AnimDataBlock data;
                 data.load(doc);
-                AnimData anim_data(data);
+                AnimData anim_data;
+
+                if (!anim_data.TryLoad(data)) {
+                    logger::error("Failed to load preset; skipping file: {}", file.path().string());
+                    continue;
+                }
 
                 for (std::unique_lock lock(m_anim_data_);
                      auto a_event_type : anim_data.events) {

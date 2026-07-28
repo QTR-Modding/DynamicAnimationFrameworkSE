@@ -119,7 +119,7 @@ namespace Presets {
         int delay;
 
         AnimData() = default;
-        explicit AnimData(AnimDataBlock& a_block);
+        [[nodiscard]] bool TryLoad(AnimDataBlock& a_block);
     };
 
     inline std::shared_mutex m_anim_data_;
