@@ -64,8 +64,8 @@ void Hooks::add_item_functor(RE::TESObjectREFR* a_this, RE::TESObjectREFR* a_obj
 namespace {
     bool IsGameFrozen() {
         if (const auto main = RE::Main::GetSingleton()) {
-            if (main->freezeTime) return true;
-            if (!main->gameActive) return true;
+            if (main->GetRuntimeData().freezeTime) return true;
+            if (!main->GetRuntimeData().gameActive) return true;
         } else return true;
         if (RE::UI::GetSingleton()->GameIsPaused()) return true;
         return false;

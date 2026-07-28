@@ -136,15 +136,11 @@ bool Manager::ActorHandleEqual::operator(
 Presets::AnimData Manager::GetAnimData(const DAF_API::AnimEventID a_animevent, const Filter& filter) {
     const auto filter_actorid = filter.actor_id;
     const auto filter_actor = RE::TESForm::LookupByID<RE::Actor>(filter.actor_id);
-    const auto filter_actor_kw = filter_actor ? filter_actor->As<RE::BGSKeywordForm>() : nullptr;
-    RE::TESBoundObject* filter_base = filter.form
-                                          ? filter.form->Is(RE::FormType::Reference)
-                                                ? filter.form->AsReference()->GetBaseObject()
-                                                : filter.form->As<RE::TESBoundObject>()
-                                          : nullptr;
+    const auto filter_actor_kw = filter_actor ? filter_actor->GetActorBase() : nullptr;
+    const auto filter_target = filter.form ? filter.form->AsReference() : nullptr;
+    RE::TESForm* filter_base = filter_target ? filter_target->GetBaseObject() : filter.form;
     const auto filter_form_kw = filter_base ? filter_base->As<RE::BGSKeywordForm>() : nullptr;
     const auto filter_formtype = filter_base ? filter_base->GetFormType() : RE::FormType::None;
-    const auto filter_target = filter.form ? filter.form->AsReference() : nullptr;
 
     // Precompute keywords once
     std::vector<RE::BGSKeyword*> form_kws;
