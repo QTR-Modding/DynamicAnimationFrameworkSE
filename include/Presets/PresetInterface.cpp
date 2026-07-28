@@ -5,13 +5,14 @@
 
 namespace {
     template <typename T>
-    void CollectForms(const std::string& form_string, std::unordered_set<T*>& a_container) {
+    bool CollectForms(const std::string& form_string, std::unordered_set<T*>& a_container) {
         if (std::shared_lock lock(PresetHelpers::formGroups_mutex_); PresetHelpers::formGroups.contains(form_string)) {
             for (auto a_formid : PresetHelpers::formGroups.at(form_string)) {
                 if (auto a_form = RE::TESForm::LookupByID<T>(a_formid)) {
                     a_container.insert(a_form);
                 } else {
                     logger::warn("Failed to get form for string: {}", form_string);
+                    return false;
                 }
             }
         } else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid > 0) {
@@ -19,10 +20,27 @@ namespace {
                 a_container.insert(a_form);
             } else {
                 logger::warn("Failed to get form for string: {}", form_string);
+                return false;
             }
         }
+        return true;
     }
 
+    bool CollectFormIDs(const std::string& form_string, std::unordered_set<RE::FormID>& a_container) {
+        if (std::shared_lock lock(PresetHelpers::formGroups_mutex_); PresetHelpers::formGroups.contains(form_string)) {
+            for (auto a_formid : PresetHelpers::formGroups.at(form_string)) {
+                a_container.insert(a_formid);
+            }
+        } else if (const auto a_formid = FormReader::GetFormEditorIDFromString(form_string); a_formid > 0) {
+            a_container.insert(a_formid);
+        } else {
+            logger::warn("Failed to get form ID for string: {}", form_string);
+            return false;
+        }
+        return true;
+    }
+
+    // Returns true if the token is negated (starts with '!'), and sets 'out' to the token without the negation prefix.
     bool IsNegatedToken(const std::string& s, std::string_view& out) {
         if (!s.empty() && s.front() == '!') {
             out = std::string_view(s).substr(1);
@@ -32,38 +50,28 @@ namespace {
         return false;
     }
 
-    void CollectActorFormID(const std::string& token, std::unordered_set<RE::FormID>& container) {
-        if (const auto id = FormReader::GetFormEditorIDFromString(token); id > 0) {
-            container.insert(id);
-        } else {
-            logger::warn("Failed to get actor form for string: {}", token);
-        }
-    }
-
-    void CollectFormType(const std::string& token, std::unordered_set<RE::FormType>& container) {
-        const auto form_type = RE::StringToFormType(token);
-        if (form_type < RE::FormType::Max && form_type > RE::FormType::None) {
+    bool CollectFormType(const std::string& token, std::unordered_set<RE::FormType>& container) {
+        if (const auto form_type = RE::StringToFormType(token);
+            form_type < RE::FormType::Max && form_type > RE::FormType::None) {
             container.insert(form_type);
+        } else {
+            logger::warn("Invalid form type string: {}", token);
+            return false;
         }
+        return true;
     }
 
     template <typename T, typename F>
-    bool CollectFilterTokens(
-        const std::vector<std::string>& tokens,
-        std::unordered_set<T>& includes,
-        std::unordered_set<T>& excludes,
-        const F& collect,
-        bool has_include = false) {
-        for (const auto& s : tokens) {
-            if (std::string_view tok; IsNegatedToken(s, tok)) {
-                collect(std::string(tok), excludes);
-            } else {
-                has_include = true;
-                collect(std::string(tok), includes);
+    bool CollectFilterTokens(const std::vector<std::string>& tokens, std::unordered_set<T>& includes,
+                             std::unordered_set<T>& excludes, const F& collect) {
+        for (const auto& value : tokens) {
+            std::string_view token;
+            if (auto& container = IsNegatedToken(value, token) ? excludes : includes;
+                !collect(std::string(token), container)) {
+                return false;
             }
         }
-        // Omitted and exclusion-only filters are valid; an include needs at least one resolved value.
-        return !has_include || !includes.empty();
+        return true;
     }
 
     template <typename T>
@@ -75,18 +83,45 @@ namespace {
             tokens,
             includes,
             excludes,
-            [](const std::string& token, auto& container) { CollectForms(token, container); });
+            [](const std::string& token, auto& container) { return CollectForms(token, container); });
+    }
+
+    bool CollectFormIDFilters(const std::vector<std::string>& tokens, std::unordered_set<RE::FormID>& includes,
+                              std::unordered_set<RE::FormID>& excludes) {
+        return CollectFilterTokens(
+            tokens,
+            includes,
+            excludes, [](const std::string& token, auto& container) {
+                return CollectFormIDs(token, container);
+            });
+    }
+
+    bool CollectFormTypeFilters(const std::vector<std::string>& tokens, std::unordered_set<RE::FormType>& includes,
+                                std::unordered_set<RE::FormType>& excludes) {
+        return CollectFilterTokens(
+            tokens,
+            includes,
+            excludes,
+            [](const std::string& token, auto& container) {
+                return CollectFormType(token, container);
+            });
     }
 }
 
 bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
+    constexpr auto formtype_index_max = static_cast<int>(RE::FormType::Max);
+    constexpr auto formtype_index_min = static_cast<int>(RE::FormType::None);
+
     const auto actor_ids = a_block.actors.get();
     actors.insert(actor_ids.begin(), actor_ids.end());
 
-    const auto numeric_form_types = a_block.form_types.get();
-    for (const auto& form_type : numeric_form_types) {
-        if (form_type < static_cast<int>(RE::FormType::Max) && form_type > static_cast<int>(RE::FormType::None)) {
+    for (const auto numeric_form_types = a_block.form_types.get();
+         const auto& form_type : numeric_form_types) {
+        if (form_type < formtype_index_max && form_type > formtype_index_min) {
             form_types.insert(static_cast<RE::FormType>(form_type));
+        } else {
+            logger::warn("Invalid form type index: {}", form_type);
+            return false;
         }
     }
 
@@ -94,16 +129,10 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
         CollectFormFilters(a_block.keywords.get(), keywords, exclude_keywords) &&
         CollectFormFilters(a_block.forms.get(), forms, exclude_forms) &&
         CollectFormFilters(a_block.locations.get(), locations, exclude_locations) &&
-        CollectFilterTokens(
-            a_block.actors_str.get(), actors, exclude_actors, CollectActorFormID, !actor_ids.empty()) &&
+        CollectFormIDFilters(a_block.actors_str.get(), actors, exclude_actors) &&
         CollectFormFilters(a_block.actor_keywords.get(), actor_keywords, exclude_actor_keywords) &&
         CollectFormFilters(a_block.conditions.get(), conditions, exclude_conditions) &&
-        CollectFilterTokens(
-            a_block.form_types_str.get(),
-            form_types,
-            exclude_form_types,
-            CollectFormType,
-            !numeric_form_types.empty());
+        CollectFormTypeFilters(a_block.form_types_str.get(), form_types, exclude_form_types);
     if (!filters_valid) {
         return false;
     }
@@ -132,10 +161,14 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
     for (const auto& type : a_block.event_type.get()) {
         if (type < kTotal && type > kNone) {
             events.insert(type);
+        } else {
+            logger::warn("Invalid event type index: {}", type);
+            return false;
         }
     }
 
-    if (const auto& type_custom = a_block.event_type_custom.get(); !type_custom.empty()) {
+    if (const auto& type_custom = a_block.event_type_custom.get();
+        !type_custom.empty()) {
         const auto a_eventid = Service::AddCustomEvent(a_block.event_type_custom.get());
         events.insert(a_eventid);
     }
