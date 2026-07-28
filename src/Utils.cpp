@@ -104,7 +104,7 @@ bool Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) 
 
 bool ModCompatibility::ModInfo::IsInstalled() {
     if (!is_checked) {
-        constexpr auto plugins_folder = "Data\\SKSE\\Plugins\\";
+        constexpr auto plugins_folder = R"(Data\SKSE\Plugins\)";
         const auto mod_path = std::string(plugins_folder) + name + ".dll";
         isLoaded = std::filesystem::exists(mod_path);
         is_checked = true;
