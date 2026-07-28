@@ -95,7 +95,7 @@ bool Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) 
                 return true;
             }
         } else {
-            logger::warn("Failed to load model for form {}: {}. Error: {}", a_form->GetFormID(), model_path,
+            logger::warn("Failed to load model for form {:x}: {}. Error: {}", a_form->GetFormID(), model_path,
                          static_cast<int>(res));
         }
     }
