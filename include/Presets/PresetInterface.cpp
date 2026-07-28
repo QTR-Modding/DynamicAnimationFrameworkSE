@@ -297,10 +297,7 @@ void Presets::Load() {
                     continue;
                 }
                 AnimDataBlock data;
-                if (!data.load(doc)) {
-                    logger::error("Failed to load preset data; skipping file: {}", file.path().string());
-                    continue;
-                }
+                data.load(doc);
                 AnimData anim_data;
 
                 if (!anim_data.TryLoad(data)) {
