@@ -73,6 +73,7 @@ namespace Presets {
         //kPOVToggle,
         kMagicEffectCast,
         kMagicEffectTarget,
+        kHarvest,
         kTotal
     };
 

@@ -2,6 +2,21 @@
 #include "Manager.h"
 #include "Utils.h"
 
+namespace {
+    class HarvestEventSink final : public RE::BSTEventSink<RE::TESHarvestedEvent::ItemHarvested> {
+    public:
+        RE::BSEventNotifyControl ProcessEvent(const RE::TESHarvestedEvent::ItemHarvested* a_event,
+                                              RE::BSTEventSource<RE::TESHarvestedEvent::ItemHarvested>*) override {
+            if (a_event && a_event->harvester && a_event->produceItem) {
+                Manager::GetSingleton()->OnHarvest(a_event->harvester, a_event->produceItem);
+            }
+            return RE::BSEventNotifyControl::kContinue;
+        }
+    };
+
+    HarvestEventSink harvest_event_sink;
+}
+
 using namespace Utils;
 
 void Hooks::Install() {
@@ -9,6 +24,7 @@ void Hooks::Install() {
     MoveItemHooks<RE::TESObjectREFR>::install(false);
     MoveItemHooks<RE::Character>::install();
     MagicEffectHooks::Install();
+    RE::TESHarvestedEvent::GetEventSource()->AddEventSink(&harvest_event_sink);
 
     MenuHook<RE::ContainerMenu>::InstallHook(RE::VTABLE_ContainerMenu[0]);
     MenuHook<RE::InventoryMenu>::InstallHook(RE::VTABLE_InventoryMenu[0]);
