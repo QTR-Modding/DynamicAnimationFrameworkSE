@@ -1,7 +1,10 @@
 #include "Presets/PresetInterface.h"
-#include "Service.h"
-#include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
+
 #include <rapidjson/error/en.h>
+
+#include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
+#include "Service.h"
+#include "Variables/Compiler.h"
 
 namespace {
     template <typename T>
@@ -138,9 +141,72 @@ namespace {
                 return CollectFormType(token, container);
             });
     }
+
+    bool CompileVariableGroups(const rapidjson::Value& a_document, const std::filesystem::path& a_animationFile,
+                               const std::size_t a_animationCount,
+                               std::unordered_map<std::filesystem::path, Variables::CompiledGroupPtr>& a_cache,
+                               std::vector<Variables::CompiledGroupPtr>& a_groups, std::string& a_error) {
+        a_groups.assign(a_animationCount, nullptr);
+        if (!a_document.IsObject()) {
+            return true;
+        }
+
+        const rapidjson::Value* variables = nullptr;
+        for (auto it = a_document.MemberBegin(); it != a_document.MemberEnd(); ++it) {
+            if (std::string_view(it->name.GetString(), it->name.GetStringLength()) == "variables") {
+                if (variables) {
+                    a_error = "duplicate top-level variables field";
+                    return false;
+                }
+                variables = &it->value;
+            }
+        }
+        if (!variables) {
+            return true;
+        }
+
+        if (!variables->IsArray() || variables->Size() != a_animationCount) {
+            a_error = "variables must be an array with exactly one entry per animation";
+            return false;
+        }
+
+        for (rapidjson::SizeType i = 0; i < variables->Size(); ++i) {
+            const auto& value = (*variables)[i];
+            if (value.IsNull()) {
+                continue;
+            }
+            if (!value.IsString()) {
+                a_error = "variables entries must be a bare group name or null";
+                return false;
+            }
+
+            const std::string_view groupName(value.GetString(), value.GetStringLength());
+            if (!Variables::IsSafeGroupName(groupName, a_error)) {
+                return false;
+            }
+            auto groupPath = Variables::ResolveGroupPath(a_animationFile, groupName, a_error).lexically_normal();
+            if (groupPath.empty()) {
+                return false;
+            }
+
+            if (const auto it = a_cache.find(groupPath); it != a_cache.end()) {
+                a_groups[i] = it->second;
+                continue;
+            }
+
+            auto group = Variables::CompileFile(groupPath, a_error);
+            if (!group) {
+                return false;
+            }
+            a_groups[i] = group;
+            a_cache.emplace(std::move(groupPath), std::move(group));
+        }
+        return true;
+    }
 }
 
-bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
+bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
+                                const std::vector<Variables::CompiledGroupPtr>& a_variableGroups) {
     constexpr auto formtype_index_max = static_cast<int>(RE::FormType::Max);
     constexpr auto formtype_index_min = static_cast<int>(RE::FormType::None);
 
@@ -173,6 +239,9 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
 
     const auto names = a_block.anim_names.get();
     auto durations = a_block.durations.get();
+    if (a_variableGroups.size() != names.size()) {
+        return false;
+    }
 
     size_t i = 0;
     for (const auto& name : names) {
@@ -180,11 +249,9 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
         //if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0){
         //    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
         //}
-        if (i < durations.size()) {
-            animations.emplace_back(a_idle, a_idle ? "" : name, durations[i]);
-        } else {
-            animations.emplace_back(a_idle, a_idle ? "" : name, 0);
-        }
+        const auto duration = i < durations.size() ? durations[i] : 0;
+        animations.push_back(
+            {Animation{a_idle, a_idle ? "" : name, static_cast<unsigned int>(duration)}, a_variableGroups[i]});
         ++i;
     }
 
@@ -282,6 +349,7 @@ void Presets::Load() {
     }
 
     PresetHelpers::TXT_Helpers::GatherForms(std::string(formGroupsFolder));
+    std::unordered_map<std::filesystem::path, Variables::CompiledGroupPtr> variableGroups;
 
     // loop folder for folders
     for (const auto& entry : std::filesystem::directory_iterator(animDataFolder)) {
@@ -318,8 +386,17 @@ void Presets::Load() {
                 AnimDataBlock data;
                 data.load(doc);
                 AnimData anim_data;
+                std::vector<Variables::CompiledGroupPtr> groups;
+                std::string variableError;
 
-                if (!anim_data.TryLoad(data)) {
+                if (!CompileVariableGroups(doc, file.path(), data.anim_names.get().size(), variableGroups, groups,
+                                           variableError)) {
+                    logger::error("Failed to load preset variable mapping '{}': {}; skipping file",
+                                  file.path().string(), variableError);
+                    continue;
+                }
+
+                if (!anim_data.TryLoad(data, groups)) {
                     logger::error("Failed to load preset; skipping file: {}", file.path().string());
                     continue;
                 }

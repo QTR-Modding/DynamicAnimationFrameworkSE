@@ -6,4 +6,7 @@ set(sources ${sources}
  	src/Animator.cpp
  	src/Service.cpp
  	include/Presets/PresetInterface.cpp
+	src/Variables/Compiler.cpp
+	src/Variables/Evaluator.cpp
+	src/Variables/Providers.cpp
 )

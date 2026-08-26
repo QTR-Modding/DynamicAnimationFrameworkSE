@@ -1,12 +1,13 @@
 #pragma once
 #include <shared_mutex>
 #include <unordered_set>
-#include "boost/pfr/core.hpp"
+
+#include "Animator.h"
 #include "CLibUtilsQTR/FormReader.hpp"
 #include "CLibUtilsQTR/PresetHelpers/Config.hpp"
 #include "DynamicAnimationFramework/API.hpp"
-#include "Animator.h"
-
+#include "Variables/Types.h"
+#include "boost/pfr/core.hpp"
 
 namespace Presets {
     struct AnimDataBlock {
@@ -85,8 +86,13 @@ namespace Presets {
 
     AnimEvent GetMenuAnimEvent(std::string_view menu_name, MenuAnimEventType a_type);
 
+    struct AnimationEntry {
+        Animation animation;
+        Variables::CompiledGroupPtr variables;
+    };
+
     struct AnimData {
-        std::vector<Animation> animations;
+        std::vector<AnimationEntry> animations;
 
         int priority;
         std::unordered_set<DAF_API::AnimEventID> events;
@@ -120,7 +126,8 @@ namespace Presets {
         int delay;
 
         AnimData() = default;
-        [[nodiscard]] bool TryLoad(AnimDataBlock& a_block);
+        [[nodiscard]] bool TryLoad(AnimDataBlock& a_block,
+                                   const std::vector<Variables::CompiledGroupPtr>& a_variableGroups);
     };
 
     inline std::shared_mutex m_anim_data_;

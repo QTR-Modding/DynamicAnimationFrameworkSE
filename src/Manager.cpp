@@ -1,7 +1,9 @@
 #include "Manager.h"
+
+#include "Animator.h"
 #include "Hooks.h"
 #include "Utils.h"
-#include "Animator.h"
+#include "Variables/Evaluator.h"
 
 namespace {
     // Credits: shad0wshayd3, https://next.nexusmods.com/profile/shad0wshayd3?gameId=1704
@@ -52,6 +54,9 @@ bool Manager::PlayAnimation(RE::Actor* a_actor,
 }
 
 int Manager::PlayAnimation(AnimEventInfo a_info) {
+    if (!a_info.a_actor) {
+        return 0;
+    }
     if (const auto actor = a_info.a_actor->As<RE::Actor>()) {
         if (!ActorCheck(actor)) {
             return 0;
@@ -60,7 +65,37 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
         if (const auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item})
             ;
             !anim_data.animations.empty()) {
-            if (PlayAnimation(actor, {a_info.event_id, anim_data.animations})) {
+            RE::ObjectRefHandle targetHandle;
+            bool targetExpected = false;
+            if (const auto target = a_info.a_item ? a_info.a_item->AsReference() : nullptr) {
+                targetExpected = true;
+                targetHandle = target->GetHandle();
+            }
+
+            std::vector<Animation> animations;
+            animations.reserve(anim_data.animations.size());
+            for (const auto& entry : anim_data.animations) {
+                auto animation = entry.animation;
+                if (entry.variables) {
+                    animation.before_play = [group = entry.variables, targetHandle, targetExpected](
+                                                RE::Actor* a_subject, const Animation&) {
+                        RE::TESObjectREFRPtr target;
+                        if (targetExpected) {
+                            if (!targetHandle) {
+                                return false;
+                            }
+                            target = targetHandle.get();
+                            if (!target) {
+                                return false;
+                            }
+                        }
+                        return Variables::EvaluateAndWrite(*group, a_subject, target.get());
+                    };
+                }
+                animations.push_back(std::move(animation));
+            }
+
+            if (PlayAnimation(actor, {a_info.event_id, std::move(animations)})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
                     if (const auto actor_id = actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
                         // ReSharper disable once CppTooWideScopeInitStatement
