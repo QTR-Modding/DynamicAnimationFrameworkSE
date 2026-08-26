@@ -284,6 +284,10 @@ int Manager::OnMagicEffectTarget(RE::TESObjectREFR* a_actor, RE::TESForm* a_effe
     return PlayAnimation({Presets::AnimEvent::kMagicEffectTarget, a_actor, a_effect});
 }
 
+int Manager::OnHarvest(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
+    return PlayAnimation({Presets::AnimEvent::kHarvest, a_actor, a_item});
+}
+
 int Manager::OnMenuOpenClose(const std::string_view menu_name, const bool opened) {
     const auto player = RE::PlayerCharacter::GetSingleton();
     const auto menuanimevent = Presets::GetMenuAnimEvent(menu_name, opened ? Presets::kOpen : Presets::kClose);
