@@ -4,7 +4,7 @@
 
 #include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
 #include "Service.h"
-#include "Variables/Compiler.h"
+#include "Variables/AnimationMapping.h"
 
 namespace {
     template <typename T>
@@ -140,68 +140,6 @@ namespace {
             [](const std::string& token, auto& container) {
                 return CollectFormType(token, container);
             });
-    }
-
-    bool CompileVariableGroups(const rapidjson::Value& a_document, const std::filesystem::path& a_animationFile,
-                               const std::size_t a_animationCount,
-                               std::unordered_map<std::filesystem::path, Variables::CompiledGroupPtr>& a_cache,
-                               std::vector<Variables::CompiledGroupPtr>& a_groups, std::string& a_error) {
-        a_groups.assign(a_animationCount, nullptr);
-        if (!a_document.IsObject()) {
-            return true;
-        }
-
-        const rapidjson::Value* variables = nullptr;
-        for (auto it = a_document.MemberBegin(); it != a_document.MemberEnd(); ++it) {
-            if (std::string_view(it->name.GetString(), it->name.GetStringLength()) == "variables") {
-                if (variables) {
-                    a_error = "duplicate top-level variables field";
-                    return false;
-                }
-                variables = &it->value;
-            }
-        }
-        if (!variables) {
-            return true;
-        }
-
-        if (!variables->IsArray() || variables->Size() != a_animationCount) {
-            a_error = "variables must be an array with exactly one entry per animation";
-            return false;
-        }
-
-        for (rapidjson::SizeType i = 0; i < variables->Size(); ++i) {
-            const auto& value = (*variables)[i];
-            if (value.IsNull()) {
-                continue;
-            }
-            if (!value.IsString()) {
-                a_error = "variables entries must be a bare group name or null";
-                return false;
-            }
-
-            const std::string_view groupName(value.GetString(), value.GetStringLength());
-            if (!Variables::IsSafeGroupName(groupName, a_error)) {
-                return false;
-            }
-            auto groupPath = Variables::ResolveGroupPath(a_animationFile, groupName, a_error).lexically_normal();
-            if (groupPath.empty()) {
-                return false;
-            }
-
-            if (const auto it = a_cache.find(groupPath); it != a_cache.end()) {
-                a_groups[i] = it->second;
-                continue;
-            }
-
-            auto group = Variables::CompileFile(groupPath, a_error);
-            if (!group) {
-                return false;
-            }
-            a_groups[i] = group;
-            a_cache.emplace(std::move(groupPath), std::move(group));
-        }
-        return true;
     }
 }
 
@@ -349,7 +287,7 @@ void Presets::Load() {
     }
 
     PresetHelpers::TXT_Helpers::GatherForms(std::string(formGroupsFolder));
-    std::unordered_map<std::filesystem::path, Variables::CompiledGroupPtr> variableGroups;
+    Variables::AnimationMappingCompiler variableMappingCompiler;
 
     // loop folder for folders
     for (const auto& entry : std::filesystem::directory_iterator(animDataFolder)) {
@@ -389,8 +327,8 @@ void Presets::Load() {
                 std::vector<Variables::CompiledGroupPtr> groups;
                 std::string variableError;
 
-                if (!CompileVariableGroups(doc, file.path(), data.anim_names.get().size(), variableGroups, groups,
-                                           variableError)) {
+                if (!variableMappingCompiler.Compile(doc, file.path(), data.anim_names.get().size(), groups,
+                                                     variableError)) {
                     logger::error("Failed to load preset variable mapping '{}': {}; skipping file",
                                   file.path().string(), variableError);
                     continue;

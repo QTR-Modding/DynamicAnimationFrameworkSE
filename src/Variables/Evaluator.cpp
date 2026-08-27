@@ -270,19 +270,27 @@ namespace Variables {
         };
     }
 
+    void LogFailure(const CompiledGroup& a_group, const std::string_view a_definition,
+                    const std::string_view a_reason) noexcept {
+        try {
+            logger::error("Variable group '{}' failed at '{}': {}", a_group.context,
+                          a_definition.empty() ? "<group>" : a_definition, a_reason);
+        } catch (...) {
+        }
+    }
+
     bool EvaluateAndWrite(const CompiledGroup& a_group, RE::TESObjectREFR* a_subject,
                           RE::TESObjectREFR* a_target) noexcept {
         try {
             Evaluation evaluation(a_group, a_subject, a_target);
             if (evaluation.Run()) return true;
             const auto& failure = evaluation.Failure();
-            logger::error("Variable group '{}' failed at '{}': {}", a_group.context,
-                          failure && !failure->definition.empty() ? failure->definition : "<group>",
-                          failure ? failure->reason : "unknown evaluation failure");
+            LogFailure(a_group, failure ? failure->definition : std::string_view{},
+                       failure ? failure->reason : "unknown evaluation failure");
         } catch (const std::exception& exception) {
-            logger::error("Variable evaluation failed for '{}': {}", a_group.context, exception.what());
+            LogFailure(a_group, {}, exception.what());
         } catch (...) {
-            logger::error("Variable evaluation failed for '{}': unknown exception", a_group.context);
+            LogFailure(a_group, {}, "unknown evaluation exception");
         }
         return false;
     }

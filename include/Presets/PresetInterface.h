@@ -2,11 +2,10 @@
 #include <shared_mutex>
 #include <unordered_set>
 
-#include "Animator.h"
 #include "CLibUtilsQTR/FormReader.hpp"
 #include "CLibUtilsQTR/PresetHelpers/Config.hpp"
 #include "DynamicAnimationFramework/API.hpp"
-#include "Variables/Types.h"
+#include "Variables/AnimationIntegration.h"
 #include "boost/pfr/core.hpp"
 
 namespace Presets {
@@ -86,13 +85,8 @@ namespace Presets {
 
     AnimEvent GetMenuAnimEvent(std::string_view menu_name, MenuAnimEventType a_type);
 
-    struct AnimationEntry {
-        Animation animation;
-        Variables::CompiledGroupPtr variables;
-    };
-
     struct AnimData {
-        std::vector<AnimationEntry> animations;
+        std::vector<Variables::AnimationEntry> animations;
 
         int priority;
         std::unordered_set<DAF_API::AnimEventID> events;

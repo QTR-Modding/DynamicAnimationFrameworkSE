@@ -1,11 +1,12 @@
 # DAF variable data and animation graph variables
 
-> Status: implemented locally; representative Skyrim AE 1.6.1170 runtime
-> smoke tests passed, while the full dual-runtime acceptance matrix remains
-> pending.
-> Items under **Pending validation** are deliberately not claimed as verified.
+> Status: implementation is complete for this PR's scoped feature.
+> Representative Skyrim AE 1.6.1170 live smoke tests passed, while the full
+> dual-runtime acceptance matrix remains pending. Items under
+> **Pending runtime verification** are acceptance checks, not missing feature
+> code, and are deliberately not claimed as verified.
 >
-> Last updated: 2026-08-26.
+> Last updated: 2026-08-27.
 
 ## Purpose
 
@@ -312,10 +313,10 @@ For a function/provider array, the first element is its numeric ID. Remaining
 entries are explicit parameters supplied by the author and interpreted using the
 provider's declared signature. Each author argument is either a JSON number or a
 JSON string. A number supplies a numeric parameter whose accepted range and
-callback-slot encoding come from DAF's verified codec for that signature. The
-declared metadata identifies the logical parameter type, but does not by itself
-prove its native callback representation. A string always identifies a Form; it
-is never passed to the callback as text.
+callback-slot encoding come from DAF's statically verified codec for that
+signature. The declared metadata identifies the logical parameter type, but does
+not by itself prove its native callback representation. A string always
+identifies a Form; it is never passed to the callback as text.
 
 Provider arguments after the ID are literals only. They cannot name another
 variable or use any recursively calculated source. JSON numbers supply numeric or
@@ -548,7 +549,10 @@ event's `a_item` is an actual `TESObjectREFR`. The callback resolves that handle
 immediately before evaluation and holds the resulting smart pointer for the
 duration of the call. If a Target was expected but its handle is invalid or no
 longer resolves, the callback returns `false` and the current animation is
-skipped. Non-reference `a_item` forms do not become a Target.
+skipped. Because this failure occurs before evaluator entry, the integration
+callback emits exactly one group-scoped diagnostic for that animation attempt,
+distinguishing an invalid captured handle from a handle that expired before
+playback. Non-reference `a_item` forms do not become a Target.
 
 Both values are object references when present:
 
@@ -561,9 +565,10 @@ The evaluator/provider layer is reusable with any `TESObjectREFR` Subject, but
 the current queued animation path necessarily supplies an `Actor` because that
 is QTR's callback contract. Target remains `TESObjectREFR` or absent.
 
-Condition callbacks and animation graph access must run on the game thread. If a
-request originates elsewhere, evaluation is queued onto the game thread rather
-than calling engine functions on the originating thread.
+Condition callbacks and animation graph access must run on the game thread. The
+current queued-animation route guarantees this because QTR schedules its
+`before_play` callback through SKSE's task interface. The evaluator itself is
+synchronous and does not independently inspect or change threads.
 
 ## Numeric condition-function providers
 
@@ -587,6 +592,8 @@ parameter metadata needed by the call-array
 syntax: count, order, type, optionality, and its callback. This design has no
 runtime external-DLL registration or collision system. Repository pull-request
 review and maintainer-controlled ID assignment prevent duplicate provider IDs.
+Importing that repository is future work outside this PR's scope, not an
+acceptance blocker for the vanilla-provider feature described here.
 
 ### What DAF can see as a function signature
 
@@ -623,10 +630,12 @@ FunctionName(
 ) -> numeric result
 ```
 
-with the callback's Boolean return captured separately. Its exact convention is
-the same on both target runtimes: `true` means that the callback supplied a
-valid numeric output, including an ordinary result of `0.0`; `false` means that
-evaluation did not supply a usable result. It is not the predicate's truth value.
+with the callback's Boolean return captured separately. Static disassembly of
+both target executables establishes the same convention: `true` means that the
+callback supplied a valid numeric output, including an ordinary result of
+`0.0`; `false` means that evaluation did not supply a usable result. It is not
+the predicate's truth value. This is static ABI evidence, distinct from the live
+smoke tests listed under **Pending runtime verification**.
 
 Subject is the callback's `a_thisObj`. It is implicit and is not included in
 `numParams`. There are at most two explicit condition-data slots beyond Subject.
@@ -661,18 +670,23 @@ names are not reliable enough to override the declared parameter types.
 
 These representative signatures illustrate both accepted and deliberately
 rejected cases in the current implementation. Zero-parameter and Form-only rows
-compile; the two explicitly verified numeric rows compile; a different numeric
+compile; the two statically verified numeric rows compile; a different numeric
 signature remains rejected even when its metadata category is known.
+
+Here, **Supported** means that the implemented compiler and invoker accept the
+signature. **Statically verified** means that its callback-slot ABI was confirmed
+by disassembling both target executables. Only the cases named under **Pending
+runtime verification** are claimed as live-smoke-tested.
 
 | ID | Function metadata | Current status and call shape |
 | ---: | --- | --- |
 | 1 | `GetDistance(ObjectReferenceID)` | Supported Form-only: `(Subject, Target, nullptr, result)` |
-| 6 | `GetPos(Axis)` | Supported verified numeric exception: `(Subject, integerSlot(axis), nullptr, result)` |
+| 6 | `GetPos(Axis)` | Supported; statically verified numeric exception: `(Subject, integerSlot(axis), nullptr, result)` |
 | 24 | `GetScale()` | Supported zero-param: `(Subject, nullptr, nullptr, result)` |
 | 577 | `IsCloserToAThanB(TESObjectREFR, TESObjectREFR)` | Supported Form-only: `(Subject, Target, authorReference, result)` |
 | 584 | `GetRelativeAngle(ObjectReferenceID, Axis)` | Rejected currently: its Axis slot has not been independently allowlisted |
-| 639 | `GetWithinDistance(ObjectReferenceID, Float)` | Supported verified numeric exception: `(Subject, Target, integerSlot(distance), result)` |
-| 720 | `GetTargetHeight(TESObjectREFR)` | Supported Form-only call shape; result semantics still pending exact game validation |
+| 639 | `GetWithinDistance(ObjectReferenceID, Float)` | Supported; statically verified numeric exception: `(Subject, Target, integerSlot(distance), result)` |
+| 720 | `GetTargetHeight(TESObjectREFR)` | Supported Form-only call shape; exact result semantics are out-of-scope future work |
 
 For example:
 
@@ -687,22 +701,23 @@ needs no author argument because Target fills `GetDistance`'s one reference slot
 ```
 
 contains an author-supplied `Z` Axis because `GetPos` has no Target-compatible
-slot. Exact 1.5.97 and 1.6.1170 disassembly establishes the direct Axis values as
-`X = 88`, `Y = 89`, and `Z = 90`.
+slot. Static 1.5.97 and 1.6.1170 disassembly establishes the direct Axis values
+as `X = 88`, `Y = 89`, and `Z = 90`.
 
 `[584, 90]` would positionally let Target fill the first reference slot and use
 the author Axis for the second, but the current compiler rejects it because ID
-584's numeric slot codec is not yet verified and allowlisted on both runtimes.
+584's numeric slot codec is not yet statically verified and allowlisted on both
+runtimes.
 
 ```json
 "value": [639, 250]
 ```
 
 lets Target fill `GetWithinDistance`'s first reference slot and places the
-integral distance `250` directly in its second callback slot. Both target
-runtimes convert that slot's unsigned integer value numerically to float. They do
-not accept a `float*` or IEEE-754 float bits, so a fractional distance is not
-representable through this callback ABI.
+integral distance `250` directly in its second callback slot. Static disassembly
+of both target executables shows that they convert that slot's unsigned integer
+value numerically to float. They do not accept a `float*` or IEEE-754 float bits,
+so a fractional distance is not representable through this callback ABI.
 
 ```text
 value = [577, "0x123~MyMod.esp"]
@@ -783,11 +798,11 @@ the callback.
 The current invocation allowlist is deliberately narrower than the 81-entry
 semantic classifier. It accepts zero-parameter callbacks, callbacks whose
 explicit parameters are all supported Form/reference types, and exactly two
-verified numeric codecs: ID 6 `GetPos` parameter 0 (`Axis`, direct integer slot)
-and ID 639 `GetWithinDistance` parameter 1 (`Float` metadata, finite
-non-negative integral `uint32_t`-like direct slot). Other callbacks containing a
-numeric parameter are rejected at compilation until their slot representation is
-proved on both Skyrim SE 1.5.97 and Skyrim AE 1.6.1170.
+statically verified numeric codecs: ID 6 `GetPos` parameter 0 (`Axis`, direct
+integer slot) and ID 639 `GetWithinDistance` parameter 1 (`Float` metadata,
+finite non-negative integral `uint32_t`-like direct slot). Other callbacks
+containing a numeric parameter are rejected at compilation until their slot
+representation is proved on both Skyrim SE 1.5.97 and Skyrim AE 1.6.1170.
 
 Exact binary audits of Skyrim SE 1.5.97 and Skyrim AE 1.6.1170 agree on the
 numeric callbacks examined:
@@ -797,9 +812,9 @@ numeric callbacks examined:
 - `GetWithinDistance` converts the unsigned integer value held directly in
   `a_param2` to float and never dereferences or IEEE-bit-reinterprets the slot.
 
-For these verified direct-integer codecs, DAF range-checks the author's number,
-converts it to `std::uintptr_t`, then places that value directly in the `void*`
-slot:
+For these statically verified direct-integer codecs, DAF range-checks the
+author's number, converts it to `std::uintptr_t`, then places that value directly
+in the `void*` slot:
 
 ```cpp
 auto* slot = reinterpret_cast<void*>(
@@ -813,9 +828,9 @@ integral config values.
 
 Metadata identifies the logical argument category, but DAF still validates the
 slot codec before supporting a numeric parameter type. It shares one codec across
-matching verified signatures and needs a function-specific exception only if the
-target executables prove different behavior. This complexity is entirely
-internal; authors continue supplying plain JSON numbers.
+matching statically verified signatures and needs a function-specific exception
+only if the target executables prove different behavior. This complexity is
+entirely internal; authors continue supplying plain JSON numbers.
 
 Across IDs `0..735`, both target runtimes have 397 eligible non-null condition
 callbacks. Among those providers, exactly one declares a `Float` parameter:
@@ -828,8 +843,8 @@ then `GetWithinDistance` would interpret those bits as an integer distance.
 
 The supported author-argument categories are:
 
-- JSON numbers: the verified callback codec decides whether the value must be
-  integral and how it is placed in the slot;
+- JSON numbers: the statically verified callback codec decides whether the value
+  must be integral and how it is placed in the slot;
 - JSON strings: always Form identifiers, resolved through ClibUtilsQTR's
   `FormReader::GetFormFromString` and checked against the declared Form/reference
   subtype;
@@ -838,12 +853,13 @@ The supported author-argument categories are:
 Native text/string parameters are unsupported because an author-supplied JSON
 string is reserved for Form resolution. Script variables, aliases, package data,
 event data, and other context-dependent types remain unsupported unless their
-known `SCRIPT_PARAM_TYPE` receives an explicit, verified numeric or Form codec.
+known `SCRIPT_PARAM_TYPE` receives an explicit, statically verified numeric
+codec or supported Form codec.
 
 Authors are responsible for knowing the native meaning of extra parameters. DAF
 does not need friendly conversions for every engine enum. For example, Axis stays
 numeric in config rather than becoming an author-facing `"Z"` string; authors use
-the verified direct values `88`, `89`, and `90`.
+the statically verified direct values `88`, `89`, and `90`.
 
 ### Callback result
 
@@ -894,13 +910,15 @@ Consequently, a variable failure skips only its corresponding animation entry.
 It does not stop or clear the remaining animation chain. No separate `continue`
 or chain-level failure handling is needed.
 
-Runtime failure reporting is per attempt. The evaluator retains the first
-concrete failing definition and reason, recursive callers propagate it without
-overwriting it, and the public `noexcept` boundary emits one error containing the
-compiled group file path, definition name (or `<group>`), and reason. Provider
-errors preserve provider ID/name and their specific failure. Exceptions are
-caught at that same boundary. There is no process-wide suppression cache, so a
-later failed animation attempt produces its own single diagnostic.
+Runtime failure reporting is per attempt. For evaluator failures, the evaluator
+retains the first concrete failing definition and reason, recursive callers
+propagate it without overwriting it, and the public `noexcept` boundary emits one
+error containing the compiled group file path, definition name (or `<group>`),
+and reason. Provider errors preserve provider ID/name and their specific failure.
+A Target-handle failure occurs before that boundary, so the integration callback
+emits one equivalent group-scoped, reason-specific error instead. Exceptions are
+caught at the evaluator boundary. There is no process-wide suppression cache, so
+a later failed animation attempt produces its own single diagnostic.
 
 ### Higher-level CK context is not implied
 
@@ -919,15 +937,15 @@ A zero-parameter function configured in the CK as “Run On Target” is therefo
 equivalent to this direct-call model. Supporting that later would require an
 explicit feature rather than silently changing Subject.
 
-## Pending validation
+## Pending runtime verification
 
 The schema compiler, 81-entry parameter classifier, provider allowlist,
 evaluator, diagnostics, preset mapping, and QTR 1.0.7 `before_play` integration
-are implemented locally. The opt-in `DAF_BUILD_TESTS` target builds the real
-compiler/provider sources and registers the `VariablesCompilerSchema` CTest.
-The recorded local run passes 1/1 tests: nine JSON compiler cases plus
-group-name/path validation. Those cases exercise compiler grammar, not native
-provider callbacks or the runtime evaluator.
+are complete for this PR's scope. The opt-in `DAF_BUILD_TESTS` targets provide
+host-side compiler/schema/path and separate animation-mapping coverage without
+depending on a running game. Their case count is not used as an acceptance
+claim. These host tests do not execute native condition callbacks, the runtime
+evaluator, live animation-graph access, or QTR's playback/queue semantics.
 
 A Skyrim AE 1.6.1170 live smoke test passed the queued `before_play` path,
 Boolean graph reads/writes, helper references, post operations, and
@@ -935,23 +953,32 @@ skip-current-entry failure behavior. A second AE smoke test passed
 zero-parameter providers ID 24 `GetScale` and ID 46 `GetDead`, Form-argument
 provider ID 1 `GetDistance`, and numeric Axis provider ID 6 `GetPos`. The
 observed results also confirmed that a successful callback may produce numeric
-`0.0`.
+`0.0`. These are live-smoke results, distinct from the static dual-runtime
+disassembly evidence used to validate callback-slot ABIs.
 
-The remaining acceptance work is:
+The remaining in-scope acceptance work is runtime verification:
 
 1. Complete the Skyrim SE 1.5.97 runtime matrix and the remaining AE cases:
    load-time rejection, integer/float graph writes and conversions,
-   conditions/fallback, `TESGlobal`, target expiry, sequential setter failure,
-   and explicit continuation after a skipped entry.
+   conditions/fallback, `TESGlobal`, sequential setter failure, and explicit
+   continuation after a skipped entry. Verify that an invalid or expired expected
+   Target handle skips only its animation entry and emits exactly one precise,
+   reason-specific diagnostic for that attempt.
 2. Runtime-test ID 639 `GetWithinDistance` on both target runtimes, repeat the
    representative provider smoke on Skyrim SE 1.5.97, and confirm that a
    callback return of `false` fails the group and produces one diagnostic.
-3. Add any further numeric callback codec only after its exact slot semantics are
-   verified on both supported runtimes.
-4. Import the separate community-provider repository before claiming any ID at
-   or above 736 is available.
-5. Verify the exact sign and coordinate source returned by `GetTargetHeight`
-   before relying on its semantic result.
+
+### Future work and out-of-scope items
+
+The following are deliberately outside this PR's acceptance scope and do not
+block it:
+
+- importing the separate community-provider repository and making IDs at or
+  above 736 available;
+- adding further numeric callback codecs; each future codec still requires exact
+  slot verification on both supported runtimes before it is allowlisted;
+- reproducing Monitor-specific behavior or validating the exact sign and
+  coordinate source returned by `GetTargetHeight`.
 
 ## Implementation invariants
 
@@ -1005,8 +1032,9 @@ requirements:
 - Resolve every author-supplied Form string once, validate it through the
   metadata-selected `As<T>()` or verified composite rule, and forward only the
   validated pointer.
-- Invoke numeric callbacks only through a slot codec verified on both target
-  runtimes, and initialize the callback result to `0.0` before every invocation.
+- Invoke numeric callbacks only through a slot codec statically verified on both
+  target executables, and initialize the callback result to `0.0` before every
+  invocation.
 - Reject non-integer or unknown graph-output `type` values and reject the removed
   `set` field at load time. At the final write, use the declared `type` to apply
   the locked conversion and call the matching Boolean, integer, or float setter.
@@ -1054,9 +1082,10 @@ DAF's configured CommonLibVR-MIT revision is
 
 Existing open-source parsers provide useful comparison evidence, but their
 packing must not be assumed correct for DAF's direct callback calls. In
-particular, Dynamic Armor Variants' float packing conflicts with the verified ID
-639 ABI on both target runtimes. Exact DAF runtime probes remain the acceptance
-test:
+particular, Dynamic Armor Variants' float packing conflicts with the statically
+verified ID 639 ABI on both target runtimes. Static dual-runtime disassembly is
+the evidence for callback-slot encoding; live DAF probes separately verify the
+thin engine integration against the real command table and callbacks:
 
 - [Dynamic Armor Variants condition parser](https://github.com/Exit-9B/DynamicArmorVariants/blob/9c805c3b935254a684862f10d5596fc1640409e1/src/main/ConditionParser.cpp)
 - [Papyrus Extender condition parser](https://github.com/powerof3/PapyrusExtenderSSE/blob/160d6272e626d8a120bf9b42d113a631b3bb222a/src/Papyrus/Util/ConditionParser.cpp)

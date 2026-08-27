@@ -7,6 +7,8 @@ set(headers ${headers}
 	include/Hooks.h
 	include/Service.h
 	include/Presets/PresetInterface.h
+	include/Variables/AnimationIntegration.h
+	include/Variables/AnimationMapping.h
 	include/Variables/Compiler.h
 	include/Variables/Evaluator.h
 	include/Variables/Providers.h
