@@ -39,7 +39,6 @@ namespace Variables {
             }
 
             const std::string_view groupName(value.GetString(), value.GetStringLength());
-            if (!IsSafeGroupName(groupName, a_error)) return false;
             auto groupPath = ResolveGroupPath(a_animationFile, groupName, a_error).lexically_normal();
             if (groupPath.empty()) return false;
 

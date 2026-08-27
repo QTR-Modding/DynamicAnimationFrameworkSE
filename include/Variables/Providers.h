@@ -6,7 +6,9 @@
 #include <string>
 #include <variant>
 
-#include "RE/Skyrim.h"
+namespace RE {
+    class TESObjectREFR;
+}
 
 namespace Variables::Providers {
     using ProviderLiteral = std::variant<double, std::string>;

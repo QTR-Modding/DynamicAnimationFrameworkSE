@@ -88,43 +88,24 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE IS_HOST_PLUGIN)
 if(DAF_BUILD_TESTS)
   enable_testing()
   add_executable(
-    DAFVariablesCompilerTests
-    tests/VariablesCompilerTests.cpp
-    src/Variables/Compiler.cpp
-    src/Variables/Providers.cpp
-  )
-  target_compile_features(DAFVariablesCompilerTests PRIVATE cxx_std_23)
-  target_precompile_headers(DAFVariablesCompilerTests PRIVATE include/PCH.h)
-  target_include_directories(
-    DAFVariablesCompilerTests
-    PRIVATE
-    ${CLIB_UTIL_INCLUDE_DIRS}
-    ${CLIB_UTILS_QTR_INCLUDE_DIRS}
-    ${DAF_API_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-  )
-  target_link_libraries(DAFVariablesCompilerTests PRIVATE CommonLibSSE)
-  add_test(NAME VariablesCompilerSchema COMMAND DAFVariablesCompilerTests)
-
-  add_executable(
-    DAFAnimationMappingTests
-    tests/AnimationMappingTests.cpp
+    DAFVariableDataTests
+    tests/VariableDataTests.cpp
     src/Variables/AnimationMapping.cpp
     src/Variables/Compiler.cpp
+    src/Variables/ProviderParameters.cpp
     src/Variables/Providers.cpp
   )
-  target_compile_features(DAFAnimationMappingTests PRIVATE cxx_std_23)
-  target_precompile_headers(DAFAnimationMappingTests PRIVATE include/PCH.h)
+  target_precompile_headers(DAFVariableDataTests PRIVATE include/PCH.h)
   target_include_directories(
-    DAFAnimationMappingTests
+    DAFVariableDataTests
     PRIVATE
     ${CLIB_UTIL_INCLUDE_DIRS}
     ${CLIB_UTILS_QTR_INCLUDE_DIRS}
     ${DAF_API_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
   )
-  target_link_libraries(DAFAnimationMappingTests PRIVATE CommonLibSSE)
-  add_test(NAME AnimationVariableMapping COMMAND DAFAnimationMappingTests)
+  target_link_libraries(DAFVariableDataTests PRIVATE CommonLibSSE)
+  add_test(NAME VariableData COMMAND DAFVariableDataTests)
 endif()
 
 set(wildlander_output false)

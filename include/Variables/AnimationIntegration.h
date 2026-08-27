@@ -1,6 +1,5 @@
 #pragma once
 
-#include <span>
 #include <vector>
 
 #include "CLibUtilsQTR/Animations.hpp"
@@ -16,6 +15,6 @@ namespace Variables {
         CompiledGroupPtr variables;
     };
 
-    [[nodiscard]] std::vector<Animation> PrepareAnimations(std::span<const AnimationEntry> a_entries,
+    [[nodiscard]] std::vector<Animation> PrepareAnimations(std::vector<AnimationEntry> a_entries,
                                                            RE::TESObjectREFR* a_target);
 }

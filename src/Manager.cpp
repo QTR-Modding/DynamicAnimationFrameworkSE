@@ -1,8 +1,7 @@
 #include "Manager.h"
-
-#include "Animator.h"
 #include "Hooks.h"
 #include "Utils.h"
+#include "Animator.h"
 #include "Variables/AnimationIntegration.h"
 
 namespace {
@@ -54,18 +53,15 @@ bool Manager::PlayAnimation(RE::Actor* a_actor,
 }
 
 int Manager::PlayAnimation(AnimEventInfo a_info) {
-    if (!a_info.a_actor) {
-        return 0;
-    }
     if (const auto actor = a_info.a_actor->As<RE::Actor>()) {
         if (!ActorCheck(actor)) {
             return 0;
         }
 
-        if (const auto anim_data =
+        if (auto anim_data =
                 GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item});
             !anim_data.animations.empty()) {
-            auto animations = Variables::PrepareAnimations(anim_data.animations,
+            auto animations = Variables::PrepareAnimations(std::move(anim_data.animations),
                                                            a_info.a_item ? a_info.a_item->AsReference() : nullptr);
 
             if (PlayAnimation(actor, {a_info.event_id, std::move(animations)})) {

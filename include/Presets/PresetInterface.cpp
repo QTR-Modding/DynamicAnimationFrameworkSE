@@ -1,9 +1,7 @@
 #include "Presets/PresetInterface.h"
-
-#include <rapidjson/error/en.h>
-
-#include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
 #include "Service.h"
+#include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
+#include <rapidjson/error/en.h>
 #include "Variables/AnimationMapping.h"
 
 namespace {

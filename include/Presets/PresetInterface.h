@@ -1,12 +1,12 @@
 #pragma once
 #include <shared_mutex>
 #include <unordered_set>
-
+#include "boost/pfr/core.hpp"
 #include "CLibUtilsQTR/FormReader.hpp"
 #include "CLibUtilsQTR/PresetHelpers/Config.hpp"
 #include "DynamicAnimationFramework/API.hpp"
 #include "Variables/AnimationIntegration.h"
-#include "boost/pfr/core.hpp"
+
 
 namespace Presets {
     struct AnimDataBlock {
