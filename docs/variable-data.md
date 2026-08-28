@@ -400,6 +400,3 @@ Evaluator exceptions are caught at the public boundary. A failed
 variable-processing attempt emits one diagnostic with the group path, failing
 definition when available, and the specific reason. There is no global
 suppression cache, so a later failed attempt gets its own diagnostic.
-
-Community-provider imports and additional numeric callback codecs are future
-work outside this feature.
