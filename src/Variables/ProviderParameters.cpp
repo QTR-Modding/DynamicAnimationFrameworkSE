@@ -1,9 +1,5 @@
 #include "ProviderParameters.h"
 
-#include <array>
-
-#include "RE/Skyrim.h"
-
 namespace Variables::Providers::detail {
     namespace {
         constexpr std::array kParamTypeTable{

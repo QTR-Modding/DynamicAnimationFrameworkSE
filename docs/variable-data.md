@@ -317,11 +317,8 @@ metadata's `referenceFunction` flag do not override this rule.
 
 Author arguments after the ID are limited to:
 
-- JSON strings for Forms and references. DAF resolves and validates the Form
-  during loading but retains only its stable FormID. Immediately before the
-  callback, it looks up the Form again, validates it with the metadata-selected
-  `As<T>()`, and forwards that transient pointer. Dynamic Forms that cannot be
-  named are unsupported.
+- JSON strings for Forms and references. The Form must match the provider's
+  parameter type. Dynamic Forms that cannot be named are unsupported.
 - JSON numbers for a statically verified numeric callback-slot codec.
 
 Strings in provider arrays always mean Forms; they never mean text, globals, or
@@ -368,16 +365,8 @@ its explicit Subject, optional Target insertion, and author literals.
 
 ## Runtime integration and failure behavior
 
-The generic evaluator accepts `TESObjectREFR` Subject and Target pointers. In
-the current queued-animation integration, ClibUtilsQTR's `before_play` callback
-provides an Actor Subject on the game thread. DAF retains Target only as an
-`ObjectRefHandle` when the animation request's item is actually a reference, and
-resolves it immediately before evaluation. An invalid or expired expected
-Target fails that animation attempt; a non-reference item is simply no Target.
-
-Config-backed TESGlobals, BGSPerks, and provider Form arguments are retained only
-as FormIDs and looked up again whenever used. An unavailable or incompatible
-Form fails the variable group.
+The animation Actor is Subject. Its item is Target only when it is a reference.
+An expired Target fails that animation; a non-reference item means no Target.
 
 For each animation entry:
 

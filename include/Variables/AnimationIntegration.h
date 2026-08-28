@@ -1,13 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include "CLibUtilsQTR/Animations.hpp"
 #include "Variables/Types.h"
-
-namespace RE {
-    class TESObjectREFR;
-}
 
 namespace Variables {
     struct AnimationEntry {

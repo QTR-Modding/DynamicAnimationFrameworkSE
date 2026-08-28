@@ -2,19 +2,9 @@
 
 #include <rapidjson/error/en.h>
 
-#include <algorithm>
-#include <cctype>
-#include <cmath>
-#include <exception>
-#include <fstream>
-#include <iterator>
-#include <span>
-#include <sstream>
-#include <unordered_map>
 #include <unordered_set>
 
 #include "CLibUtilsQTR/FormReader.hpp"
-#include "Variables/Providers.h"
 
 namespace Variables {
     namespace {
@@ -65,12 +55,6 @@ namespace Variables {
             return true;
         }
 
-        bool ResolvePluginFormID(std::string_view a_value, std::uint32_t& a_result, std::string& a_error,
-                                 std::string_view a_context) {
-            a_result = FormReader::GetFormEditorIDFromString(std::string(a_value));
-            return a_result != 0 || Fail(a_error, a_context, "Form identifier did not resolve to a loaded plugin");
-        }
-
         bool ReadGraphType(const rapidjson::Value& a_value, GraphType& a_result, std::string& a_error,
                            std::string_view a_context) {
             if (!a_value.IsInt()) {
@@ -91,7 +75,7 @@ namespace Variables {
             }
         }
 
-        bool ResolveEarlier(std::string_view a_name, const DefinitionMap& a_definitions, VariableReference& a_result,
+        bool ResolveEarlier(std::string_view a_name, const DefinitionMap& a_definitions, std::size_t& a_result,
                             std::string& a_error, std::string_view a_context) {
             if (a_name.empty()) {
                 return Fail(a_error, a_context, "variable reference cannot be empty");
@@ -100,7 +84,7 @@ namespace Variables {
             if (found == a_definitions.end()) {
                 return Fail(a_error, a_context, "variable reference must name an earlier definition");
             }
-            a_result.index = found->second;
+            a_result = found->second;
             return true;
         }
 
@@ -115,7 +99,7 @@ namespace Variables {
                 return true;
             }
             if (a_value.IsString()) {
-                VariableReference reference;
+                std::size_t reference;
                 if (!ResolveEarlier(a_value.GetString(), a_definitions, reference, a_error, a_context)) {
                     return false;
                 }
@@ -142,17 +126,15 @@ namespace Variables {
             if (a_value.IsString()) {
                 const std::string value = a_value.GetString();
                 if (IsPluginQualifiedForm(value)) {
-                    std::uint32_t formID;
-                    if (!ResolvePluginFormID(value, formID, a_error, a_context)) {
-                        return false;
-                    }
-                    if (!RE::TESForm::LookupByID<RE::TESGlobal>(formID)) {
+                    auto* form = FormReader::GetFormFromString(value);
+                    auto* global = form ? form->As<RE::TESGlobal>() : nullptr;
+                    if (!global) {
                         return Fail(a_error, a_context, "FormID source did not resolve to TESGlobal");
                     }
-                    a_result = GlobalRead{formID};
+                    a_result = global;
                     return true;
                 }
-                VariableReference reference;
+                std::size_t reference;
                 if (!ResolveEarlier(value, a_definitions, reference, a_error, a_context)) {
                     return false;
                 }
@@ -189,12 +171,12 @@ namespace Variables {
                     }
                     arguments.emplace_back(number);
                 } else if (argument.IsString() && IsPluginQualifiedForm(argument.GetString())) {
-                    std::uint32_t formID;
-                    if (!ResolvePluginFormID(argument.GetString(), formID, a_error,
-                                             std::string(a_context) + '[' + std::to_string(i) + ']')) {
-                        return false;
+                    auto* form = FormReader::GetFormFromString(argument.GetString());
+                    if (!form) {
+                        return Fail(a_error, std::string(a_context) + '[' + std::to_string(i) + ']',
+                                    "Form identifier did not resolve");
                     }
-                    arguments.emplace_back(Providers::FormArgument{formID});
+                    arguments.emplace_back(form);
                 } else {
                     return Fail(a_error, a_context, "provider arguments must be finite numbers or FormID strings");
                 }
@@ -205,11 +187,11 @@ namespace Variables {
             if (!call) {
                 return Fail(a_error, a_context, "provider call rejected: " + providerError);
             }
-            a_result = ProviderRead{std::move(call)};
+            a_result = std::move(call);
             return true;
         }
 
-        bool CompileConditions(const rapidjson::Value& a_value, std::vector<std::uint32_t>& a_result,
+        bool CompileConditions(const rapidjson::Value& a_value, std::vector<RE::BGSPerk*>& a_result,
                                std::string& a_error, std::string_view a_context) {
             if (!a_value.IsArray()) {
                 return Fail(a_error, a_context, "conditions must be an array");
@@ -218,14 +200,12 @@ namespace Variables {
                 if (!entry.IsString() || !IsPluginQualifiedForm(entry.GetString())) {
                     return Fail(a_error, a_context, "each condition must be a plugin-qualified BGSPerk FormID");
                 }
-                std::uint32_t formID;
-                if (!ResolvePluginFormID(entry.GetString(), formID, a_error, a_context)) {
-                    return false;
-                }
-                if (!RE::TESForm::LookupByID<RE::BGSPerk>(formID)) {
+                auto* form = FormReader::GetFormFromString(entry.GetString());
+                auto* perk = form ? form->As<RE::BGSPerk>() : nullptr;
+                if (!perk) {
                     return Fail(a_error, a_context, "condition FormID did not resolve to BGSPerk");
                 }
-                a_result.push_back(formID);
+                a_result.push_back(perk);
             }
             return true;
         }

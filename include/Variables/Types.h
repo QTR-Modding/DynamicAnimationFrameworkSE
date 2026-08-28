@@ -1,26 +1,12 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <optional>
-#include <string>
-#include <variant>
-#include <vector>
+#include "Variables/Providers.h"
 
 namespace Variables {
-    namespace Providers {
-        struct ProviderCall;
-    }
-
     enum class GraphType : std::uint8_t {
         kBool = 0,
         kInt = 1,
         kFloat = 2,
-    };
-
-    struct VariableReference {
-        std::size_t index;
     };
 
     struct GraphRead {
@@ -28,16 +14,9 @@ namespace Variables {
         GraphType type;
     };
 
-    struct GlobalRead {
-        std::uint32_t formID;
-    };
-
-    struct ProviderRead {
-        std::shared_ptr<const Providers::ProviderCall> call;
-    };
-
-    using Source = std::variant<float, VariableReference, GraphRead, GlobalRead, ProviderRead>;
-    using Operand = std::variant<float, VariableReference>;
+    using Source =
+        std::variant<float, std::size_t, GraphRead, RE::TESGlobal*, std::shared_ptr<const Providers::ProviderCall>>;
+    using Operand = std::variant<float, std::size_t>;
 
     enum class PostOperationType : std::uint8_t {
         kAdd,
@@ -59,7 +38,7 @@ namespace Variables {
         std::string name;
         Source value;
         std::optional<Source> fallback;
-        std::vector<std::uint32_t> conditions;
+        std::vector<RE::BGSPerk*> conditions;
         std::vector<PostOperation> post;
         std::optional<GraphType> output_type;
     };

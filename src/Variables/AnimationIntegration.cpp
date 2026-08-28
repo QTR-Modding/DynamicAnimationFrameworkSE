@@ -1,7 +1,5 @@
 #include "Variables/AnimationIntegration.h"
 
-#include <utility>
-
 #include "Variables/Evaluator.h"
 
 namespace Variables {

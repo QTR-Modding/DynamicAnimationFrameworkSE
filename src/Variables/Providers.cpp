@@ -1,13 +1,5 @@
 #include "Variables/Providers.h"
 
-#include <array>
-#include <cmath>
-#include <exception>
-#include <limits>
-#include <optional>
-#include <string_view>
-#include <utility>
-
 #include "ProviderParameters.h"
 
 namespace Variables::Providers {
@@ -172,15 +164,8 @@ namespace Variables::Providers {
 
         struct TargetSlot {};
 
-        struct NumericSlot {
-            std::uintptr_t value{0};
-        };
-
-        using CompiledSlot = std::variant<std::monostate, TargetSlot, FormArgument, NumericSlot>;
-
-        struct BindingLayout {
-            std::array<CompiledSlot, 2> slots{};
-        };
+        using CompiledSlot = std::variant<std::monostate, TargetSlot, RE::TESForm*, std::uintptr_t>;
+        using BindingLayout = std::array<CompiledSlot, 2>;
 
         bool CompileArgument(const ProviderDescriptor& a_provider, std::size_t a_parameterIndex,
                              std::size_t a_argumentIndex, const ProviderLiteral& a_argument, CompiledSlot& a_slot,
@@ -192,21 +177,16 @@ namespace Variables::Providers {
                                 " (" + typeName + ") ";
 
             if (parameter.codec == SlotCodec::kFormPointer) {
-                const auto* formArgument = std::get_if<FormArgument>(std::addressof(a_argument));
-                if (!formArgument) {
+                const auto* form = std::get_if<RE::TESForm*>(std::addressof(a_argument));
+                if (!form) {
                     a_error = prefix + "must be a Form identifier string";
                     return false;
                 }
-                auto* form = RE::TESForm::LookupByID(formArgument->formID);
-                if (!form) {
-                    a_error = prefix + "could not resolve the Form identifier";
-                    return false;
-                }
-                if (!ResolveFormPointer(parameter.type, form)) {
+                if (!ResolveFormPointer(parameter.type, *form)) {
                     a_error = prefix + "resolved to an incompatible Form";
                     return false;
                 }
-                a_slot = *formArgument;
+                a_slot = *form;
                 return true;
             }
 
@@ -226,7 +206,7 @@ namespace Variables::Providers {
                         a_error = prefix + "must be an exact Axis value: X=88, Y=89, or Z=90";
                         return false;
                     }
-                    a_slot = NumericSlot{static_cast<std::uintptr_t>(static_cast<std::uint32_t>(*number))};
+                    a_slot = static_cast<std::uintptr_t>(static_cast<std::uint32_t>(*number));
                     return true;
                 case SlotCodec::kUnsignedDirectToFloat:
                     if (*number < 0.0 || std::trunc(*number) != *number ||
@@ -234,7 +214,7 @@ namespace Variables::Providers {
                         a_error = prefix + "must be a finite, non-negative integral value in the uint32 range";
                         return false;
                     }
-                    a_slot = NumericSlot{static_cast<std::uintptr_t>(static_cast<std::uint32_t>(*number))};
+                    a_slot = static_cast<std::uintptr_t>(static_cast<std::uint32_t>(*number));
                     return true;
                 default:
                     a_error = prefix + "has no verified callback-slot codec";
@@ -248,7 +228,7 @@ namespace Variables::Providers {
             BindingLayout layout;
             std::size_t firstLiteralParameter = 0;
             if (a_insertTarget) {
-                layout.slots[0] = TargetSlot{};
+                layout[0] = TargetSlot{};
                 firstLiteralParameter = 1;
             }
 
@@ -263,8 +243,7 @@ namespace Variables::Providers {
 
             for (std::size_t i = 0; i < a_arguments.size(); ++i) {
                 const auto parameterIndex = firstLiteralParameter + i;
-                if (!CompileArgument(a_provider, parameterIndex, i, a_arguments[i], layout.slots[parameterIndex],
-                                     a_error)) {
+                if (!CompileArgument(a_provider, parameterIndex, i, a_arguments[i], layout[parameterIndex], a_error)) {
                     return std::nullopt;
                 }
             }
@@ -292,15 +271,8 @@ namespace Variables::Providers {
                 a_result = static_cast<void*>(a_target);
                 return true;
             }
-            if (const auto* form = std::get_if<FormArgument>(std::addressof(a_slot))) {
-                auto* resolved = RE::TESForm::LookupByID(form->formID);
-                if (!resolved) {
-                    SetEvaluationError(
-                        a_error, a_provider.id, a_provider.name,
-                        "Form argument for parameter " + std::to_string(a_parameterIndex) + " is unavailable");
-                    return false;
-                }
-                a_result = ResolveFormPointer(a_provider.params[a_parameterIndex].type, resolved);
+            if (const auto* form = std::get_if<RE::TESForm*>(std::addressof(a_slot))) {
+                a_result = ResolveFormPointer(a_provider.params[a_parameterIndex].type, *form);
                 if (!a_result) {
                     SetEvaluationError(a_error, a_provider.id, a_provider.name,
                                        "Form argument for parameter " + std::to_string(a_parameterIndex) +
@@ -309,8 +281,8 @@ namespace Variables::Providers {
                 }
                 return true;
             }
-            if (const auto* number = std::get_if<NumericSlot>(std::addressof(a_slot))) {
-                a_result = reinterpret_cast<void*>(number->value);
+            if (const auto* number = std::get_if<std::uintptr_t>(std::addressof(a_slot))) {
+                a_result = reinterpret_cast<void*>(*number);
             }
             return true;
         }
@@ -393,8 +365,8 @@ namespace Variables::Providers {
 
             void* parameter1;
             void* parameter2;
-            if (!detail::MaterializeSlot(a_call.provider, 0, (*layout)->slots[0], a_target, parameter1, a_error) ||
-                !detail::MaterializeSlot(a_call.provider, 1, (*layout)->slots[1], a_target, parameter2, a_error)) {
+            if (!detail::MaterializeSlot(a_call.provider, 0, (**layout)[0], a_target, parameter1, a_error) ||
+                !detail::MaterializeSlot(a_call.provider, 1, (**layout)[1], a_target, parameter2, a_error)) {
                 return false;
             }
             double nativeResult = 0.0;

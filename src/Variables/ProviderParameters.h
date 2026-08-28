@@ -1,15 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <string_view>
-
-#include "RE/C/CommandTable.h"
-
-namespace RE {
-    class TESForm;
-}
-
 namespace Variables::Providers::detail {
     enum class ParamKind : std::uint8_t { kInt, kFloat, kForm, kUnsupported };
 

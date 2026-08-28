@@ -1,21 +1,7 @@
 #pragma once
 
-#include <cstdint>
-#include <memory>
-#include <span>
-#include <string>
-#include <variant>
-
-namespace RE {
-    class TESObjectREFR;
-}
-
 namespace Variables::Providers {
-    struct FormArgument {
-        std::uint32_t formID;
-    };
-
-    using ProviderLiteral = std::variant<double, FormArgument>;
+    using ProviderLiteral = std::variant<double, RE::TESForm*>;
 
     struct ProviderCall;
 

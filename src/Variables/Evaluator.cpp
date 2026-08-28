@@ -1,13 +1,5 @@
 #include "Variables/Evaluator.h"
 
-#include <algorithm>
-#include <cmath>
-#include <cstdint>
-#include <exception>
-#include <limits>
-#include <optional>
-#include <variant>
-
 #include "Variables/Providers.h"
 #include "logger.h"
 
@@ -94,11 +86,7 @@ namespace Variables {
                 } restore{currentDefinition, previousDefinition};
                 bool gatePassed = definition.conditions.empty();
                 if (!gatePassed) {
-                    for (const auto formID : definition.conditions) {
-                        const auto* perk = RE::TESForm::LookupByID<RE::BGSPerk>(formID);
-                        if (!perk) {
-                            return Fail("condition FormID " + std::to_string(formID) + " is unavailable");
-                        }
+                    for (const auto* perk : definition.conditions) {
                         if (perk->perkConditions.IsTrue(subject, target)) {
                             gatePassed = true;
                             break;
@@ -133,19 +121,14 @@ namespace Variables {
                         if constexpr (std::is_same_v<T, float>) {
                             a_result = a_value;
                             return true;
-                        } else if constexpr (std::is_same_v<T, VariableReference>) {
-                            return Calculate(a_value.index, a_result);
-                        } else if constexpr (std::is_same_v<T, GlobalRead>) {
-                            const auto* global = RE::TESForm::LookupByID<RE::TESGlobal>(a_value.formID);
-                            if (!global) {
-                                return Fail("TESGlobal source is unavailable");
-                            }
-                            a_result = global->value;
+                        } else if constexpr (std::is_same_v<T, std::size_t>) {
+                            return Calculate(a_value, a_result);
+                        } else if constexpr (std::is_same_v<T, RE::TESGlobal*>) {
+                            a_result = a_value->value;
                             return std::isfinite(a_result) || Fail("TESGlobal source is not finite");
-                        } else if constexpr (std::is_same_v<T, ProviderRead>) {
-                            if (!a_value.call) return Fail("provider call is unavailable");
+                        } else if constexpr (std::is_same_v<T, std::shared_ptr<const Providers::ProviderCall>>) {
                             std::string error;
-                            if (!Providers::Evaluate(*a_value.call, subject, target, a_result, error)) {
+                            if (!Providers::Evaluate(*a_value, subject, target, a_result, error)) {
                                 return Fail(error.empty() ? "provider evaluation failed" : std::move(error));
                             }
                             return std::isfinite(a_result) || Fail("provider result is not finite");
@@ -191,7 +174,7 @@ namespace Variables {
                                    a_result = a_value;
                                    return true;
                                } else {
-                                   return Calculate(a_value.index, a_result);
+                                   return Calculate(a_value, a_result);
                                }
                            },
                            a_operand) &&

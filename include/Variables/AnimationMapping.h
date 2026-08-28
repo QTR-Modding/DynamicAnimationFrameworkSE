@@ -2,12 +2,6 @@
 
 #include <rapidjson/document.h>
 
-#include <cstddef>
-#include <filesystem>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 #include "Variables/Types.h"
 
 namespace Variables {

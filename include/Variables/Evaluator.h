@@ -1,12 +1,6 @@
 #pragma once
 
-#include <string_view>
-
 #include "Variables/Types.h"
-
-namespace RE {
-    class TESObjectREFR;
-}
 
 namespace Variables {
     void LogFailure(const CompiledGroup& a_group, std::string_view a_definition, std::string_view a_reason) noexcept;
