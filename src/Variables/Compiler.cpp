@@ -67,10 +67,7 @@ namespace Variables {
 
         bool ResolvePluginFormID(std::string_view a_value, std::uint32_t& a_result, std::string& a_error,
                                  std::string_view a_context) {
-            const auto separator = a_value.find('~');
-            const std::string localID(a_value.substr(0, separator));
-            const std::string pluginName(a_value.substr(separator + 1));
-            a_result = FormReader::GetForm(pluginName.c_str(), FormReader::GetFormIDFromString(localID));
+            a_result = FormReader::GetFormEditorIDFromString(std::string(a_value));
             return a_result != 0 || Fail(a_error, a_context, "Form identifier did not resolve to a loaded plugin");
         }
 
