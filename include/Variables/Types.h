@@ -8,11 +8,6 @@
 #include <variant>
 #include <vector>
 
-namespace RE {
-    class BGSPerk;
-    class TESGlobal;
-}
-
 namespace Variables {
     namespace Providers {
         struct ProviderCall;
@@ -34,7 +29,7 @@ namespace Variables {
     };
 
     struct GlobalRead {
-        RE::TESGlobal* global;
+        std::uint32_t formID;
     };
 
     struct ProviderRead {
@@ -64,7 +59,7 @@ namespace Variables {
         std::string name;
         Source value;
         std::optional<Source> fallback;
-        std::vector<RE::BGSPerk*> conditions;
+        std::vector<std::uint32_t> conditions;
         std::vector<PostOperation> post;
         std::optional<GraphType> output_type;
     };

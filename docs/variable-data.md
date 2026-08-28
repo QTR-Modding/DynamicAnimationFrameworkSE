@@ -5,6 +5,7 @@ animation is played. All calculated sources use the same small value language.
 
 JSON is read only while presets load. DAF validates it and stores owned C++
 data; animation-time evaluation never reparses or refers back to JSON.
+Compiled data retains stable FormIDs, never borrowed engine Form pointers.
 
 ## Animation-to-variable mapping
 
@@ -320,9 +321,11 @@ metadata's `referenceFunction` flag do not override this rule.
 
 Author arguments after the ID are limited to:
 
-- JSON strings for Forms and references. DAF resolves the string with
-  ClibUtilsQTR, validates it with the metadata-selected `As<T>()`, and forwards
-  the validated pointer. Dynamic Forms that cannot be named are unsupported.
+- JSON strings for Forms and references. DAF resolves and validates the Form
+  during loading but retains only its stable FormID. Immediately before the
+  callback, it looks up the Form again, validates it with the metadata-selected
+  `As<T>()`, and forwards that transient pointer. Dynamic Forms that cannot be
+  named are unsupported.
 - JSON numbers for a statically verified numeric callback-slot codec.
 
 Strings in provider arrays always mean Forms; they never mean text, globals, or
@@ -375,6 +378,10 @@ provides an Actor Subject on the game thread. DAF retains Target only as an
 `ObjectRefHandle` when the animation request's item is actually a reference, and
 resolves it immediately before evaluation. An invalid or expired expected
 Target fails that animation attempt; a non-reference item is simply no Target.
+
+Config-backed TESGlobals, BGSPerks, and provider Form arguments are retained only
+as FormIDs and looked up again whenever used. An unavailable or incompatible
+Form fails the variable group.
 
 For each animation entry:
 

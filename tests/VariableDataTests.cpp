@@ -5,12 +5,18 @@
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
 #include "PCH.h"
 #include "Variables/AnimationMapping.h"
 #include "Variables/Compiler.h"
+#include "Variables/Providers.h"
+
+static_assert(std::is_same_v<decltype(Variables::GlobalRead::formID), std::uint32_t>);
+static_assert(std::is_same_v<typename decltype(Variables::Definition::conditions)::value_type, std::uint32_t>);
+static_assert(std::is_same_v<decltype(Variables::Providers::FormArgument::formID), std::uint32_t>);
 
 namespace {
     struct Case {

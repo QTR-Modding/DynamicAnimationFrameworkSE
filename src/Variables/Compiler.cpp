@@ -65,6 +65,15 @@ namespace Variables {
             return true;
         }
 
+        bool ResolvePluginFormID(std::string_view a_value, std::uint32_t& a_result, std::string& a_error,
+                                 std::string_view a_context) {
+            const auto separator = a_value.find('~');
+            const std::string localID(a_value.substr(0, separator));
+            const std::string pluginName(a_value.substr(separator + 1));
+            a_result = FormReader::GetForm(pluginName.c_str(), FormReader::GetFormIDFromString(localID));
+            return a_result != 0 || Fail(a_error, a_context, "Form identifier did not resolve to a loaded plugin");
+        }
+
         bool ReadGraphType(const rapidjson::Value& a_value, GraphType& a_result, std::string& a_error,
                            std::string_view a_context) {
             if (!a_value.IsInt()) {
@@ -136,12 +145,14 @@ namespace Variables {
             if (a_value.IsString()) {
                 const std::string value = a_value.GetString();
                 if (IsPluginQualifiedForm(value)) {
-                    const auto form = FormReader::GetFormFromString(value);
-                    const auto global = form ? form->As<RE::TESGlobal>() : nullptr;
-                    if (!global) {
+                    std::uint32_t formID;
+                    if (!ResolvePluginFormID(value, formID, a_error, a_context)) {
+                        return false;
+                    }
+                    if (!RE::TESForm::LookupByID<RE::TESGlobal>(formID)) {
                         return Fail(a_error, a_context, "FormID source did not resolve to TESGlobal");
                     }
-                    a_result = GlobalRead{global};
+                    a_result = GlobalRead{formID};
                     return true;
                 }
                 VariableReference reference;
@@ -181,7 +192,12 @@ namespace Variables {
                     }
                     arguments.emplace_back(number);
                 } else if (argument.IsString() && IsPluginQualifiedForm(argument.GetString())) {
-                    arguments.emplace_back(std::string(argument.GetString()));
+                    std::uint32_t formID;
+                    if (!ResolvePluginFormID(argument.GetString(), formID, a_error,
+                                             std::string(a_context) + '[' + std::to_string(i) + ']')) {
+                        return false;
+                    }
+                    arguments.emplace_back(Providers::FormArgument{formID});
                 } else {
                     return Fail(a_error, a_context, "provider arguments must be finite numbers or FormID strings");
                 }
@@ -196,7 +212,7 @@ namespace Variables {
             return true;
         }
 
-        bool CompileConditions(const rapidjson::Value& a_value, std::vector<RE::BGSPerk*>& a_result,
+        bool CompileConditions(const rapidjson::Value& a_value, std::vector<std::uint32_t>& a_result,
                                std::string& a_error, std::string_view a_context) {
             if (!a_value.IsArray()) {
                 return Fail(a_error, a_context, "conditions must be an array");
@@ -205,12 +221,14 @@ namespace Variables {
                 if (!entry.IsString() || !IsPluginQualifiedForm(entry.GetString())) {
                     return Fail(a_error, a_context, "each condition must be a plugin-qualified BGSPerk FormID");
                 }
-                const auto form = FormReader::GetFormFromString(entry.GetString());
-                const auto perk = form ? form->As<RE::BGSPerk>() : nullptr;
-                if (!perk) {
+                std::uint32_t formID;
+                if (!ResolvePluginFormID(entry.GetString(), formID, a_error, a_context)) {
+                    return false;
+                }
+                if (!RE::TESForm::LookupByID<RE::BGSPerk>(formID)) {
                     return Fail(a_error, a_context, "condition FormID did not resolve to BGSPerk");
                 }
-                a_result.push_back(perk);
+                a_result.push_back(formID);
             }
             return true;
         }

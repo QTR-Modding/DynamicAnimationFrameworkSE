@@ -11,7 +11,11 @@ namespace RE {
 }
 
 namespace Variables::Providers {
-    using ProviderLiteral = std::variant<double, std::string>;
+    struct FormArgument {
+        std::uint32_t formID;
+    };
+
+    using ProviderLiteral = std::variant<double, FormArgument>;
 
     struct ProviderCall;
 

@@ -94,9 +94,16 @@ namespace Variables {
                 } restore{currentDefinition, previousDefinition};
                 bool gatePassed = definition.conditions.empty();
                 if (!gatePassed) {
-                    gatePassed = std::ranges::any_of(definition.conditions, [this](const RE::BGSPerk* a_perk) {
-                        return a_perk && a_perk->perkConditions.IsTrue(subject, target);
-                    });
+                    for (const auto formID : definition.conditions) {
+                        const auto* perk = RE::TESForm::LookupByID<RE::BGSPerk>(formID);
+                        if (!perk) {
+                            return Fail("condition FormID " + std::to_string(formID) + " is unavailable");
+                        }
+                        if (perk->perkConditions.IsTrue(subject, target)) {
+                            gatePassed = true;
+                            break;
+                        }
+                    }
                 }
                 if (!gatePassed) {
                     if (!definition.fallback) {
@@ -129,10 +136,11 @@ namespace Variables {
                         } else if constexpr (std::is_same_v<T, VariableReference>) {
                             return Calculate(a_value.index, a_result);
                         } else if constexpr (std::is_same_v<T, GlobalRead>) {
-                            if (!a_value.global) {
+                            const auto* global = RE::TESForm::LookupByID<RE::TESGlobal>(a_value.formID);
+                            if (!global) {
                                 return Fail("TESGlobal source is unavailable");
                             }
-                            a_result = a_value.global->value;
+                            a_result = global->value;
                             return std::isfinite(a_result) || Fail("TESGlobal source is not finite");
                         } else if constexpr (std::is_same_v<T, ProviderRead>) {
                             if (!a_value.call) return Fail("provider call is unavailable");

@@ -8,7 +8,6 @@
 #include <string_view>
 #include <utility>
 
-#include "CLibUtilsQTR/FormReader.hpp"
 #include "ProviderParameters.h"
 
 namespace Variables::Providers {
@@ -23,12 +22,9 @@ namespace Variables::Providers {
             bool optional{false};
         };
 
-        using ConditionCallback = RE::SCRIPT_FUNCTION::Condition_t*;
-
         struct ProviderDescriptor {
             std::uint32_t id{0};
             std::string name;
-            ConditionCallback callback{nullptr};
             std::uint16_t numParams{0};
             std::array<ParameterDescriptor, 2> params{};
         };
@@ -117,11 +113,16 @@ namespace Variables::Providers {
             return true;
         }
 
-        std::optional<ProviderDescriptor> ResolveVanillaProvider(std::uint32_t a_providerID, std::string& a_error) {
+        const RE::SCRIPT_FUNCTION* ResolveVanillaFunction(std::uint32_t a_providerID, std::string& a_error) {
+            if (a_providerID >= RE::SCRIPT_FUNCTION::Commands::kScriptCommandsEnd) {
+                a_error = "provider " + std::to_string(a_providerID) +
+                          ": IDs 736 and above are reserved and unavailable in this build";
+                return nullptr;
+            }
             auto* table = RE::SCRIPT_FUNCTION::GetFirstScriptCommand();
             if (!table) {
                 a_error = "provider " + std::to_string(a_providerID) + ": Skyrim script-command table is unavailable";
-                return std::nullopt;
+                return nullptr;
             }
 
             const auto& function = table[a_providerID];
@@ -131,29 +132,36 @@ namespace Variables::Providers {
             if (actualOpcode != expectedOpcode) {
                 a_error = ProviderPrefix(a_providerID, name) + ": opcode mismatch; expected " +
                           std::to_string(expectedOpcode) + ", got " + std::to_string(actualOpcode);
+                return nullptr;
+            }
+            return std::addressof(function);
+        }
+
+        std::optional<ProviderDescriptor> ResolveVanillaProvider(std::uint32_t a_providerID, std::string& a_error) {
+            const auto* function = ResolveVanillaFunction(a_providerID, a_error);
+            if (!function) {
                 return std::nullopt;
             }
-            if (!function.conditionFunction) {
+            const std::string_view name = function->functionName ? function->functionName : "";
+            if (!function->conditionFunction) {
                 a_error = ProviderPrefix(a_providerID, name) + ": no condition callback is available";
                 return std::nullopt;
             }
-            if (function.numParams > 2) {
-                a_error = ProviderPrefix(a_providerID, name) + ": declares " + std::to_string(function.numParams) +
+            if (function->numParams > 2) {
+                a_error = ProviderPrefix(a_providerID, name) + ": declares " + std::to_string(function->numParams) +
                           " parameters; DAF supports at most 2";
                 return std::nullopt;
             }
-            if (function.numParams != 0 && !function.params) {
+            if (function->numParams != 0 && !function->params) {
                 a_error = ProviderPrefix(a_providerID, name) + ": declares parameters but has null parameter metadata";
                 return std::nullopt;
             }
 
-            ProviderDescriptor descriptor{.id = a_providerID,
-                                          .name = std::string(name),
-                                          .callback = function.conditionFunction,
-                                          .numParams = function.numParams};
+            ProviderDescriptor descriptor{
+                .id = a_providerID, .name = std::string(name), .numParams = function->numParams};
             for (std::size_t i = 0; i < descriptor.numParams; ++i) {
-                descriptor.params[i].type = function.params[i].paramType.get();
-                descriptor.params[i].optional = function.params[i].optional;
+                descriptor.params[i].type = function->params[i].paramType.get();
+                descriptor.params[i].optional = function->params[i].optional;
             }
 
             if (!NormalizeParameters(descriptor, a_error)) {
@@ -162,26 +170,13 @@ namespace Variables::Providers {
             return descriptor;
         }
 
-        std::optional<ProviderDescriptor> ResolveProvider(std::uint32_t a_providerID, std::string& a_error) {
-            if (a_providerID >= RE::SCRIPT_FUNCTION::Commands::kScriptCommandsEnd) {
-                a_error = "provider " + std::to_string(a_providerID) +
-                          ": IDs 736 and above are reserved and unavailable in this build";
-                return std::nullopt;
-            }
-            return ResolveVanillaProvider(a_providerID, a_error);
-        }
-
         struct TargetSlot {};
-
-        struct FormSlot {
-            void* pointer{nullptr};
-        };
 
         struct NumericSlot {
             std::uintptr_t value{0};
         };
 
-        using CompiledSlot = std::variant<std::monostate, TargetSlot, FormSlot, NumericSlot>;
+        using CompiledSlot = std::variant<std::monostate, TargetSlot, FormArgument, NumericSlot>;
 
         struct BindingLayout {
             std::array<CompiledSlot, 2> slots{};
@@ -197,22 +192,22 @@ namespace Variables::Providers {
                                 " (" + typeName + ") ";
 
             if (parameter.codec == SlotCodec::kFormPointer) {
-                const auto* formString = std::get_if<std::string>(std::addressof(a_argument));
-                if (!formString) {
+                const auto* formArgument = std::get_if<FormArgument>(std::addressof(a_argument));
+                if (!formArgument) {
                     a_error = prefix + "must be a Form identifier string";
                     return false;
                 }
-                auto* form = FormReader::GetFormFromString(*formString);
+                auto* form = RE::TESForm::LookupByID(formArgument->formID);
                 if (!form) {
-                    a_error = prefix + "could not resolve Form identifier '" + *formString + "'";
+                    a_error = prefix + "could not resolve the Form identifier";
                     return false;
                 }
-                if (auto* pointer = ResolveFormPointer(parameter.type, form)) {
-                    a_slot = FormSlot{pointer};
-                    return true;
+                if (!ResolveFormPointer(parameter.type, form)) {
+                    a_error = prefix + "resolved to an incompatible Form";
+                    return false;
                 }
-                a_error = prefix + "resolved to an incompatible Form";
-                return false;
+                a_slot = *formArgument;
+                return true;
             }
 
             const auto* number = std::get_if<double>(std::addressof(a_argument));
@@ -285,17 +280,39 @@ namespace Variables::Providers {
             return layout;
         }
 
-        void* MaterializeSlot(const CompiledSlot& a_slot, RE::TESObjectREFR* a_target) noexcept {
+        bool MaterializeSlot(const ProviderDescriptor& a_provider, std::size_t a_parameterIndex,
+                             const CompiledSlot& a_slot, RE::TESObjectREFR* a_target, void*& a_result,
+                             std::string& a_error) {
+            a_result = nullptr;
             if (std::holds_alternative<TargetSlot>(a_slot)) {
-                return static_cast<void*>(a_target);
+                if (!a_target) {
+                    SetEvaluationError(a_error, a_provider.id, a_provider.name, "Target is unavailable");
+                    return false;
+                }
+                a_result = static_cast<void*>(a_target);
+                return true;
             }
-            if (const auto* form = std::get_if<FormSlot>(std::addressof(a_slot))) {
-                return form->pointer;
+            if (const auto* form = std::get_if<FormArgument>(std::addressof(a_slot))) {
+                auto* resolved = RE::TESForm::LookupByID(form->formID);
+                if (!resolved) {
+                    SetEvaluationError(
+                        a_error, a_provider.id, a_provider.name,
+                        "Form argument for parameter " + std::to_string(a_parameterIndex) + " is unavailable");
+                    return false;
+                }
+                a_result = ResolveFormPointer(a_provider.params[a_parameterIndex].type, resolved);
+                if (!a_result) {
+                    SetEvaluationError(a_error, a_provider.id, a_provider.name,
+                                       "Form argument for parameter " + std::to_string(a_parameterIndex) +
+                                           " has an incompatible runtime type");
+                    return false;
+                }
+                return true;
             }
             if (const auto* number = std::get_if<NumericSlot>(std::addressof(a_slot))) {
-                return reinterpret_cast<void*>(number->value);
+                a_result = reinterpret_cast<void*>(number->value);
             }
-            return nullptr;
+            return true;
         }
     }
 
@@ -311,7 +328,7 @@ namespace Variables::Providers {
                                                     std::string& a_error) {
         a_error.clear();
         try {
-            auto provider = detail::ResolveProvider(a_providerID, a_error);
+            auto provider = detail::ResolveVanillaProvider(a_providerID, a_error);
             if (!provider) {
                 return {};
             }
@@ -356,9 +373,12 @@ namespace Variables::Providers {
                 detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name, "Subject is missing");
                 return false;
             }
-            if (!a_call.provider.callback) {
-                detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name,
-                                           "condition callback is missing");
+            const auto* function = detail::ResolveVanillaFunction(a_call.provider.id, a_error);
+            if (!function || !function->conditionFunction) {
+                if (function) {
+                    detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name,
+                                               "condition callback is missing");
+                }
                 return false;
             }
 
@@ -371,10 +391,14 @@ namespace Variables::Providers {
                 return false;
             }
 
-            auto* parameter1 = detail::MaterializeSlot((*layout)->slots[0], a_target);
-            auto* parameter2 = detail::MaterializeSlot((*layout)->slots[1], a_target);
+            void* parameter1;
+            void* parameter2;
+            if (!detail::MaterializeSlot(a_call.provider, 0, (*layout)->slots[0], a_target, parameter1, a_error) ||
+                !detail::MaterializeSlot(a_call.provider, 1, (*layout)->slots[1], a_target, parameter2, a_error)) {
+                return false;
+            }
             double nativeResult = 0.0;
-            if (!a_call.provider.callback(a_subject, parameter1, parameter2, nativeResult)) {
+            if (!function->conditionFunction(a_subject, parameter1, parameter2, nativeResult)) {
                 detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name,
                                            "condition callback returned false");
                 return false;
