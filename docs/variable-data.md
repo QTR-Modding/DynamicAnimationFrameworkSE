@@ -3,10 +3,6 @@
 DAF calculates and sets animation graph variables immediately before each
 animation is played. All calculated sources use the same small value language.
 
-JSON is read only while presets load. DAF validates it and stores owned C++
-data; animation-time evaluation never reparses or refers back to JSON.
-Compiled data retains stable FormIDs, never borrowed engine Form pointers.
-
 ## Animation-to-variable mapping
 
 Variable files live beside the existing `animData` tree:
