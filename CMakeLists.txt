@@ -70,8 +70,15 @@ include(${COMMONLIB_SRC_DIR}/cmake/CommonLibSSE.cmake)
 add_commonlibsse_plugin(
   ${PROJECT_NAME}
   AUTHOR AUTHOR_NAME
+  1.5.97.0
+  1.6.1170.0
   SOURCES ${headers} ${sources}
 )
+
+if(MSVC)
+  target_link_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RelWithDebInfo>:/OPT:REF>")
+endif()
+
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
 target_precompile_headers(${PROJECT_NAME} PRIVATE include/PCH.h) # <--- PCH.h is required!
 target_include_directories(
