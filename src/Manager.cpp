@@ -58,8 +58,7 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
             return 0;
         }
 
-        if (auto anim_data =
-                GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item});
+        if (auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item});
             !anim_data.animations.empty()) {
             auto animations = Variables::PrepareAnimations(std::move(anim_data.animations),
                                                            a_info.a_item ? a_info.a_item->AsReference() : nullptr);

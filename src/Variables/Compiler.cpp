@@ -391,7 +391,7 @@ namespace Variables {
             if (document.HasParseError()) {
                 std::ostringstream message;
                 message << a_path.string() << ": JSON parse error at offset " << document.GetErrorOffset() << ": "
-                        << rapidjson::GetParseError_En(document.GetParseError());
+                    << rapidjson::GetParseError_En(document.GetParseError());
                 a_error = message.str();
                 return nullptr;
             }

@@ -15,7 +15,7 @@ namespace Variables {
     };
 
     using Source =
-        std::variant<float, std::size_t, GraphRead, RE::TESGlobal*, std::shared_ptr<const Providers::ProviderCall>>;
+    std::variant<float, std::size_t, GraphRead, RE::TESGlobal*, std::shared_ptr<const Providers::ProviderCall>>;
     using Operand = std::variant<float, std::size_t>;
 
     enum class PostOperationType : std::uint8_t {

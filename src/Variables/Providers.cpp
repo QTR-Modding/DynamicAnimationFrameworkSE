@@ -8,6 +8,7 @@ namespace Variables::Providers {
         constexpr std::uint32_t kGetWithinDistanceID = 639;
 
         enum class SlotCodec : std::uint8_t { kFormPointer, kAxisDirect, kUnsignedDirectToFloat, kUnsupported };
+
         struct ParameterDescriptor {
             RE::SCRIPT_PARAM_TYPE type{RE::SCRIPT_PARAM_TYPE::kChar};
             SlotCodec codec{SlotCodec::kUnsupported};
@@ -162,7 +163,8 @@ namespace Variables::Providers {
             return descriptor;
         }
 
-        struct TargetSlot {};
+        struct TargetSlot {
+        };
 
         using CompiledSlot = std::variant<std::monostate, TargetSlot, RE::TESForm*, std::uintptr_t>;
         using BindingLayout = std::array<CompiledSlot, 2>;
@@ -276,7 +278,7 @@ namespace Variables::Providers {
                 if (!a_result) {
                     SetEvaluationError(a_error, a_provider.id, a_provider.name,
                                        "Form argument for parameter " + std::to_string(a_parameterIndex) +
-                                           " has an incompatible runtime type");
+                                       " has an incompatible runtime type");
                     return false;
                 }
                 return true;
@@ -354,12 +356,14 @@ namespace Variables::Providers {
                 return false;
             }
 
-            const auto* layout = a_target && a_call.targetEligible ? std::addressof(a_call.withTarget)
-                                                                   : std::addressof(a_call.withoutTarget);
+            const auto* layout = a_target && a_call.targetEligible
+                                     ? std::addressof(a_call.withTarget)
+                                     : std::addressof(a_call.withoutTarget);
             if (!*layout) {
                 detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name,
-                                           a_target && a_call.targetEligible ? "no viable Target binding layout"
-                                                                             : "no viable no-Target binding layout");
+                                           a_target && a_call.targetEligible
+                                               ? "no viable Target binding layout"
+                                               : "no viable no-Target binding layout");
                 return false;
             }
 

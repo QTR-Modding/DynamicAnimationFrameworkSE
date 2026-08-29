@@ -168,7 +168,7 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kMapMarker:
                 if (auto* reference = a_form->As<RE::TESObjectREFR>();
                     reference && reference->extraList.HasType<RE::ExtraMapMarker>()) {
-                    return static_cast<void*>(reference);
+                    return reference;
                 }
                 return nullptr;
             case RE::SCRIPT_PARAM_TYPE::kActorBase:
@@ -176,7 +176,7 @@ namespace Variables::Providers::detail {
                 return AsForm<RE::TESNPC>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kContainerRef:
                 if (auto* reference = a_form->As<RE::TESObjectREFR>(); reference && reference->GetContainer()) {
-                    return static_cast<void*>(reference);
+                    return reference;
                 }
                 return nullptr;
             case RE::SCRIPT_PARAM_TYPE::kWorldOrList:
@@ -240,7 +240,7 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kLocation:
                 return AsForm<RE::BGSLocation>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kForm:
-                return static_cast<void*>(a_form);
+                return a_form;
             case RE::SCRIPT_PARAM_TYPE::kShout:
                 return AsForm<RE::TESShout>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kWordOfPower:

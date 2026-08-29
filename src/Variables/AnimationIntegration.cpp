@@ -1,5 +1,4 @@
 #include "Variables/AnimationIntegration.h"
-
 #include "Variables/Evaluator.h"
 
 namespace Variables {
@@ -16,21 +15,23 @@ namespace Variables {
             auto animation = std::move(entry.animation);
             if (entry.variables) {
                 animation.before_play = [group = std::move(entry.variables), targetHandle, targetExpected](
-                                            RE::Actor* a_subject, const Animation&) {
-                    RE::TESObjectREFRPtr target;
-                    if (targetExpected) {
-                        if (!targetHandle) {
-                            LogFailure(*group, {}, "target reference handle was invalid when the animation was queued");
-                            return false;
+                    RE::Actor* a_subject, const Animation&) {
+                        RE::TESObjectREFRPtr target;
+                        if (targetExpected) {
+                            if (!targetHandle) {
+                                LogFailure(*group, {},
+                                           "target reference handle was invalid when the animation was queued");
+                                return false;
+                            }
+                            target = targetHandle.get();
+                            if (!target) {
+                                LogFailure(*group, {},
+                                           "target reference handle expired before the animation was played");
+                                return false;
+                            }
                         }
-                        target = targetHandle.get();
-                        if (!target) {
-                            LogFailure(*group, {}, "target reference handle expired before the animation was played");
-                            return false;
-                        }
-                    }
-                    return EvaluateAndWrite(*group, a_subject, target.get());
-                };
+                        return EvaluateAndWrite(*group, a_subject, target.get());
+                    };
             }
             animations.push_back(std::move(animation));
         }

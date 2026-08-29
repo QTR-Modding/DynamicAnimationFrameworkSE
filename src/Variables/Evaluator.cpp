@@ -22,7 +22,8 @@ namespace Variables {
                 : group(a_group),
                   subject(a_subject),
                   target(a_target),
-                  holder(a_subject ? static_cast<RE::IAnimationGraphManagerHolder*>(a_subject) : nullptr) {}
+                  holder(a_subject ? static_cast<RE::IAnimationGraphManagerHolder*>(a_subject) : nullptr) {
+            }
 
             bool Run() {
                 if (!subject || !holder) return Fail("animation graph subject is unavailable");
