@@ -116,8 +116,7 @@ namespace Variables {
 
             bool EvaluateSource(const Source& a_source, float& a_result) {
                 return std::visit(
-                    [this, &a_result](const auto& a_value) -> bool {
-                        using T = std::decay_t<decltype(a_value)>;
+                    [this, &a_result]<typename T>(const T& a_value) -> bool {
                         if constexpr (std::is_same_v<T, float>) {
                             a_result = a_value;
                             return true;
@@ -168,8 +167,7 @@ namespace Variables {
 
             bool EvaluateOperand(const Operand& a_operand, float& a_result) {
                 return std::visit(
-                           [this, &a_result](const auto& a_value) -> bool {
-                               using T = std::decay_t<decltype(a_value)>;
+                           [this, &a_result]<typename T>(const T& a_value) -> bool {
                                if constexpr (std::is_same_v<T, float>) {
                                    a_result = a_value;
                                    return true;
@@ -236,8 +234,8 @@ namespace Variables {
                         output.value = a_value != 0.0f;
                         break;
                     case GraphType::kInt: {
-                        constexpr float minimum = -2147483648.0f;
-                        constexpr float maximumExclusive = 2147483648.0f;
+                        constexpr auto minimum = static_cast<float>(std::numeric_limits<std::int32_t>::min());
+                        constexpr auto maximumExclusive = -minimum;
                         if (a_value < minimum || a_value >= maximumExclusive) {
                             return Fail("integer output is outside [-2147483648, 2147483648)", a_definition.name);
                         }

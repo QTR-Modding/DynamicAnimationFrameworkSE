@@ -174,7 +174,7 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
     priority = a_block.priority.get();
 
     const auto names = a_block.anim_names.get();
-    auto durations = a_block.durations.get();
+    const auto durations = a_block.durations.get();
     if (a_variableGroups.size() != names.size()) {
         return false;
     }
@@ -187,7 +187,7 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
         //}
         const auto duration = i < durations.size() ? durations[i] : 0;
         animations.push_back(
-            {Animation{a_idle, a_idle ? "" : name, static_cast<unsigned int>(duration)}, a_variableGroups[i]});
+            {.animation = Animation{.a_idle = a_idle, .anim_name = a_idle ? "" : name, .t_wait_ms = static_cast<unsigned int>(duration)}, .variables = a_variableGroups[i]});
         ++i;
     }
 
