@@ -103,7 +103,7 @@ Each key is either a helper or a graph variable to set:
   graph variable name.
 - A definition may use only definitions written above it.
 
-An earlier definition is worked out again each time its name is used.
+A helper is recalculated every time it is used.
 
 These are all supported fields:
 
