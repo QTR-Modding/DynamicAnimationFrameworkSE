@@ -36,23 +36,6 @@ namespace Variables {
             return true;
         }
 
-        bool IsPluginQualifiedForm(const std::string_view a_value) {
-            if (!a_value.starts_with("0x") && !a_value.starts_with("0X")) {
-                return false;
-            }
-            const auto separator = a_value.find('~');
-            if (separator <= 2 || separator + 1 >= a_value.size() || a_value.find('~', separator + 1) != a_value.npos) {
-                return false;
-            }
-            for (std::size_t i = 2; i < separator; ++i) {
-                const auto character = static_cast<unsigned char>(a_value[i]);
-                if (!std::isxdigit(character)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         bool ReadGraphType(const rapidjson::Value& a_value, GraphType& a_result, std::string& a_error,
                            const std::string_view a_context) {
             if (!a_value.IsInt()) {
@@ -123,20 +106,17 @@ namespace Variables {
             }
             if (a_value.IsString()) {
                 const std::string value = a_value.GetString();
-                if (IsPluginQualifiedForm(value)) {
-                    const auto form = FormReader::GetFormFromString(value);
-                    auto global = form ? form->As<RE::TESGlobal>() : nullptr;
-                    if (!global) {
-                        return Fail(a_error, a_context, "FormID source did not resolve to TESGlobal");
-                    }
-                    a_result = global;
+                if (const auto definition = a_definitions.find(value); definition != a_definitions.end()) {
+                    a_result = definition->second;
                     return true;
                 }
-                std::size_t reference;
-                if (!ResolveEarlier(value, a_definitions, reference, a_error, a_context)) {
-                    return false;
+                const auto form = FormReader::GetFormFromString(value);
+                auto global = form ? form->As<RE::TESGlobal>() : nullptr;
+                if (!global) {
+                    return Fail(a_error, a_context,
+                                "string source did not resolve to an earlier definition or TESGlobal");
                 }
-                a_result = reference;
+                a_result = global;
                 return true;
             }
             if (!a_value.IsArray() || a_value.Empty()) {
@@ -170,7 +150,7 @@ namespace Variables {
                         return Fail(a_error, a_context, "provider numeric argument must be finite");
                     }
                     arguments.emplace_back(number);
-                } else if (argument.IsString() && IsPluginQualifiedForm(argument.GetString())) {
+                } else if (argument.IsString()) {
                     auto form = FormReader::GetFormFromString(argument.GetString());
                     if (!form) {
                         return Fail(a_error, std::string(a_context) + '[' + std::to_string(i) + ']',
@@ -178,7 +158,8 @@ namespace Variables {
                     }
                     arguments.emplace_back(form);
                 } else {
-                    return Fail(a_error, a_context, "provider arguments must be finite numbers or FormID strings");
+                    return Fail(a_error, a_context,
+                                "provider arguments must be finite numbers or Form identifier strings");
                 }
             }
             std::string providerError;
@@ -197,13 +178,13 @@ namespace Variables {
                 return Fail(a_error, a_context, "conditions must be an array");
             }
             for (const auto& entry : a_value.GetArray()) {
-                if (!entry.IsString() || !IsPluginQualifiedForm(entry.GetString())) {
-                    return Fail(a_error, a_context, "each condition must be a plugin-qualified BGSPerk FormID");
+                if (!entry.IsString()) {
+                    return Fail(a_error, a_context, "each condition must be a BGSPerk Form identifier");
                 }
                 const auto form = FormReader::GetFormFromString(entry.GetString());
                 auto perk = form ? form->As<RE::BGSPerk>() : nullptr;
                 if (!perk) {
-                    return Fail(a_error, a_context, "condition FormID did not resolve to BGSPerk");
+                    return Fail(a_error, a_context, "condition Form identifier did not resolve to BGSPerk");
                 }
                 a_result.push_back(perk);
             }

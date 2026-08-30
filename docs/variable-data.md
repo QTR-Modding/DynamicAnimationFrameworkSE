@@ -129,8 +129,9 @@ A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 | `["II_AnimationSpeed", 2]` | A graph variable value |
 | `[24]` | `GetScale()` result; see [condition functions](#use-a-condition-function-advanced) |
 
-A FormID string must use `0x...~Plugin` format. Any other string names an
-earlier definition.
+A string matching an earlier definition uses that definition. Otherwise, DAF
+resolves it as a [plugin-local ID, full FormID, or EditorID](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Preset-Creation-Guide#5-ids-very-important).
+Here it must resolve to a `TESGlobal`.
 
 DAF works with floats until it writes a graph variable. It then applies its
 declared `type`. At play time, an invalid result or an integer outside the
@@ -139,7 +140,7 @@ signed 32-bit range skips the animation.
 ## Use conditions and `else`
 
 Put your Creation Kit conditions in a `BGSPerk`'s top-level condition list,
-then add its FormID:
+then add its Form identifier:
 
 ```json
 {
@@ -257,12 +258,12 @@ Arguments work like this:
   DAF always uses Target. A config argument cannot replace it.
 - Config arguments fill the remaining function parameters in order.
 - DAF never supplies the second function parameter.
-- Forms and references use FormID strings. Numbers and enums use JSON numbers.
+- Forms and references use Form identifier strings. Numbers and enums use JSON numbers.
 - Arguments must be literal values. They cannot use helpers or graph reads.
 
-Inside this array, a FormID string passes the Form itself. It does not read a
-`TESGlobal` value. Missing, extra, or wrong arguments reject the call. Optional
-trailing parameters may be omitted.
+Inside this array, a Form identifier string passes the Form itself. It does not
+read a `TESGlobal` value. Missing, extra, or wrong arguments reject the call.
+Optional trailing parameters may be omitted.
 
 Examples:
 
