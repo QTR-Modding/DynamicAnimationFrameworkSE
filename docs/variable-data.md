@@ -222,7 +222,7 @@ Use `[name, type]`:
 
 This reads the current float value, halves it, and writes it back.
 
-- `"name"` uses an earlier definition in the file.
+- `"name"` means: find `name` above in the same file and use its calculated value.
 - `["name", type]` reads an existing graph variable.
 - Every graph read happens before this file writes any new values.
 
