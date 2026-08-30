@@ -5,7 +5,7 @@
 #include "Variables/Types.h"
 
 namespace Variables {
-    [[nodiscard]] CompiledGroupPtr CompileGroup(const rapidjson::Value& a_root, std::string_view a_context,
+    [[nodiscard]] CompiledGroupPtr CompileGroup(const rapidjson::Value& a_groupData, std::string_view a_context,
                                                 std::string& a_error) noexcept;
 
     [[nodiscard]] CompiledGroupPtr CompileFile(const std::filesystem::path& a_path, std::string& a_error) noexcept;

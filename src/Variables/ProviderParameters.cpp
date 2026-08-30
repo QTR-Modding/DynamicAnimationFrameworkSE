@@ -183,14 +183,14 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kGlobal:
                 return AsForm<RE::TESGlobal>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kFurnitureOrFormList:
-                if (auto result = AsForm<RE::TESFurniture>(a_form)) {
+                if (const auto result = AsForm<RE::TESFurniture>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::BGSListForm>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kObject:
                 return AsForm<RE::TESObject>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kMapMarker:
-                if (auto reference = a_form->As<RE::TESObjectREFR>();
+                if (const auto reference = a_form->As<RE::TESObjectREFR>();
                     reference && reference->extraList.HasType<RE::ExtraMapMarker>()) {
                     return reference;
                 }
@@ -199,12 +199,12 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kNPC:
                 return AsForm<RE::TESNPC>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kContainerRef:
-                if (auto reference = a_form->As<RE::TESObjectREFR>(); reference && reference->GetContainer()) {
+                if (const auto reference = a_form->As<RE::TESObjectREFR>(); reference && reference->GetContainer()) {
                     return reference;
                 }
                 return nullptr;
             case RE::SCRIPT_PARAM_TYPE::kWorldOrList:
-                if (auto result = AsForm<RE::TESWorldSpace>(a_form)) {
+                if (const auto result = AsForm<RE::TESWorldSpace>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::BGSListForm>(a_form);
@@ -217,7 +217,7 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kWeather:
                 return AsForm<RE::TESWeather>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kOwner:
-                if (auto result = AsForm<RE::TESNPC>(a_form)) {
+                if (const auto result = AsForm<RE::TESNPC>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::TESFaction>(a_form);
@@ -244,14 +244,14 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kMessage:
                 return AsForm<RE::BGSMessage>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kInvObjectOrFormList:
-                if (auto result = AsForm<RE::TESBoundObject>(a_form)) {
+                if (const auto result = AsForm<RE::TESBoundObject>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::BGSListForm>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kEquipType:
                 return AsForm<RE::BGSEquipSlot>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kObjectOrFormList:
-                if (auto result = AsForm<RE::TESObject>(a_form)) {
+                if (const auto result = AsForm<RE::TESObject>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::BGSListForm>(a_form);
@@ -276,10 +276,10 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kReferenceEffect:
                 return AsForm<RE::BGSReferenceEffect>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kKnowableForm:
-                if (auto result = AsForm<RE::EffectSetting>(a_form)) {
+                if (const auto result = AsForm<RE::EffectSetting>(a_form)) {
                     return result;
                 }
-                if (auto result = AsForm<RE::TESWordOfPower>(a_form)) {
+                if (const auto result = AsForm<RE::TESWordOfPower>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::EnchantmentItem>(a_form);

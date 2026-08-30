@@ -8,7 +8,7 @@ namespace Variables {
     namespace {
         using DefinitionMap = std::unordered_map<std::string, std::size_t>;
 
-        std::string Prefix(const std::string_view a_context, const std::string_view a_definition) {
+        std::string MakeDefinitionContext(const std::string_view a_context, const std::string_view a_definition) {
             std::string result(a_context);
             if (!a_definition.empty()) {
                 result += " [";
@@ -107,7 +107,7 @@ namespace Variables {
             return Fail(a_error, a_context, "operand must be a finite number or earlier variable name");
         }
 
-        bool CompileSource(const rapidjson::Value& a_value, const DefinitionMap& a_definitions, Source& a_result,
+        bool CompileSource(const rapidjson::Value& a_value, const DefinitionMap& a_definitions, ValueSource& a_result,
                            std::string& a_error, const std::string_view a_context) {
             if (a_value.IsBool()) {
                 a_result = a_value.GetBool() ? 1.0f : 0.0f;
@@ -124,7 +124,7 @@ namespace Variables {
             if (a_value.IsString()) {
                 const std::string value = a_value.GetString();
                 if (IsPluginQualifiedForm(value)) {
-                    auto form = FormReader::GetFormFromString(value);
+                    const auto form = FormReader::GetFormFromString(value);
                     auto global = form ? form->As<RE::TESGlobal>() : nullptr;
                     if (!global) {
                         return Fail(a_error, a_context, "FormID source did not resolve to TESGlobal");
@@ -140,7 +140,9 @@ namespace Variables {
                 return true;
             }
             if (!a_value.IsArray() || a_value.Empty()) {
-                return Fail(a_error, a_context, "source must be a literal, string, graph read, or provider array");
+                return Fail(
+                    a_error, a_context,
+                    "value must be a boolean, number, variable/global string, graph-read array, or provider array");
             }
 
             if (a_value[0].IsString()) {
@@ -151,7 +153,7 @@ namespace Variables {
                 if (!ReadGraphType(a_value[1], type, a_error, std::string(a_context) + ".readType")) {
                     return false;
                 }
-                a_result = GraphRead{a_value[0].GetString(), type};
+                a_result = GraphRead{.name = a_value[0].GetString(), .type = type};
                 return true;
             }
 
@@ -198,7 +200,7 @@ namespace Variables {
                 if (!entry.IsString() || !IsPluginQualifiedForm(entry.GetString())) {
                     return Fail(a_error, a_context, "each condition must be a plugin-qualified BGSPerk FormID");
                 }
-                auto form = FormReader::GetFormFromString(entry.GetString());
+                const auto form = FormReader::GetFormFromString(entry.GetString());
                 auto perk = form ? form->As<RE::BGSPerk>() : nullptr;
                 if (!perk) {
                     return Fail(a_error, a_context, "condition FormID did not resolve to BGSPerk");
@@ -209,7 +211,7 @@ namespace Variables {
         }
 
         bool CompilePost(const rapidjson::Value& a_value, const DefinitionMap& a_definitions,
-                         std::vector<PostOperation>& a_result, std::string& a_error, const std::string_view a_context) {
+                         std::vector<PostOp>& a_result, std::string& a_error, const std::string_view a_context) {
             if (!a_value.IsObject()) {
                 return Fail(a_error, a_context, "post must be an object");
             }
@@ -221,7 +223,7 @@ namespace Variables {
                     return Fail(a_error, operationContext, "duplicate post operation");
                 }
 
-                PostOperation operation{};
+                PostOp operation{};
                 if (name == "asin") {
                     if (!it->value.IsBool() || !it->value.GetBool()) {
                         return Fail(a_error, operationContext, "asin must be true");
@@ -268,7 +270,7 @@ namespace Variables {
                                const DefinitionMap& a_definitions, Definition& a_result, std::string& a_error,
                                const std::string_view a_context) {
             a_result.name = a_name;
-            const auto definitionContext = Prefix(a_context, a_name);
+            const auto definitionContext = MakeDefinitionContext(a_context, a_name);
             if (a_value.IsBool() || a_value.IsNumber()) {
                 return CompileSource(a_value, a_definitions, a_result.value, a_error, definitionContext + ".value");
             }
@@ -310,11 +312,11 @@ namespace Variables {
                 return false;
             }
             if (fallback) {
-                Source compiledFallback;
+                ValueSource compiledFallback;
                 if (!CompileSource(*fallback, a_definitions, compiledFallback, a_error, definitionContext + ".else")) {
                     return false;
                 }
-                a_result.fallback = std::move(compiledFallback);
+                a_result.else_val = std::move(compiledFallback);
             }
             if (conditions &&
                 !CompileConditions(*conditions, a_result.conditions, a_error, definitionContext + ".conditions")) {
@@ -334,26 +336,26 @@ namespace Variables {
         }
     }
 
-    CompiledGroupPtr CompileGroup(const rapidjson::Value& a_root, const std::string_view a_context,
+    CompiledGroupPtr CompileGroup(const rapidjson::Value& a_groupData, const std::string_view a_context,
                                   std::string& a_error) noexcept {
         try {
             a_error.clear();
-            if (!a_root.IsObject()) {
+            if (!a_groupData.IsObject()) {
                 Fail(a_error, a_context, "variable-group root must be an object");
                 return nullptr;
             }
             auto group = std::make_shared<CompiledGroup>();
             group->context = a_context;
-            group->definitions.reserve(a_root.MemberCount());
+            group->definitions.reserve(a_groupData.MemberCount());
             DefinitionMap definitions;
-            for (auto it = a_root.MemberBegin(); it != a_root.MemberEnd(); ++it) {
+            for (auto it = a_groupData.MemberBegin(); it != a_groupData.MemberEnd(); ++it) {
                 const std::string name = it->name.GetString();
                 if (name.empty()) {
                     Fail(a_error, a_context, "definition name cannot be empty");
                     return nullptr;
                 }
                 if (definitions.contains(name)) {
-                    Fail(a_error, Prefix(a_context, name), "duplicate definition name");
+                    Fail(a_error, MakeDefinitionContext(a_context, name), "duplicate definition name");
                     return nullptr;
                 }
                 Definition definition;
@@ -362,7 +364,7 @@ namespace Variables {
                 }
                 const auto index = group->definitions.size();
                 if (definition.output_type) {
-                    group->roots.push_back(index);
+                    group->graph_variable_indices.push_back(index);
                 }
                 group->definitions.push_back(std::move(definition));
                 definitions.emplace(name, index);
@@ -426,13 +428,10 @@ namespace Variables {
         if (!IsSafeGroupName(a_groupName, a_error)) {
             return {};
         }
-        const auto animationFolder = a_animationFile.parent_path();
-        const auto animDataFolder = animationFolder.parent_path();
-        const auto dafFolder = animDataFolder.parent_path();
-        if (animationFolder.empty() || animDataFolder.filename() != "animData" || dafFolder.filename() != "DAF") {
-            Fail(a_error, a_animationFile.string(), "animation file is not under DAF/animData/<folder>");
-            return {};
-        }
-        return dafFolder / "varData" / animationFolder.filename() / (std::string(a_groupName) + ".json");
+
+        constexpr std::string_view varDataFolder = R"(Data\SKSE\Plugins\DAF\varData)";
+
+        return std::filesystem::path(varDataFolder) / a_animationFile.parent_path().filename() /
+               (std::string(a_groupName) + ".json");
     }
 }

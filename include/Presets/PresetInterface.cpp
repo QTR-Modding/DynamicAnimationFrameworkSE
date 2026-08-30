@@ -342,8 +342,8 @@ void Presets::Load() {
                     continue;
                 }
 
-                for (std::unique_lock lock(m_anim_data_);
-                     auto a_event_type : anim_data.events) {
+                for (std::unique_lock lock(m_anim_data_); 
+                    auto a_event_type : anim_data.events) {
                     anim_map[a_event_type].push_back(anim_data);
                 }
             }

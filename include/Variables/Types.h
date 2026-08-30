@@ -14,7 +14,7 @@ namespace Variables {
         GraphType type;
     };
 
-    using Source =
+    using ValueSource =
     std::variant<float, std::size_t, GraphRead, RE::TESGlobal*, std::shared_ptr<const Providers::ProviderCall>>;
     using Operand = std::variant<float, std::size_t>;
 
@@ -28,7 +28,7 @@ namespace Variables {
         kAsin,
     };
 
-    struct PostOperation {
+    struct PostOp {
         PostOperationType type;
         Operand first{0.0f};
         std::optional<Operand> second;
@@ -36,17 +36,17 @@ namespace Variables {
 
     struct Definition {
         std::string name;
-        Source value;
-        std::optional<Source> fallback;
+        ValueSource value;
+        std::optional<ValueSource> else_val;
         std::vector<RE::BGSPerk*> conditions;
-        std::vector<PostOperation> post;
+        std::vector<PostOp> post;
         std::optional<GraphType> output_type;
     };
 
     struct CompiledGroup {
         std::string context;
         std::vector<Definition> definitions;
-        std::vector<std::size_t> roots;
+        std::vector<std::size_t> graph_variable_indices;
     };
 
     using CompiledGroupPtr = std::shared_ptr<const CompiledGroup>;

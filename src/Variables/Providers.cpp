@@ -111,7 +111,7 @@ namespace Variables::Providers {
                           ": IDs 736 and above are reserved and unavailable in this build";
                 return nullptr;
             }
-            auto table = RE::SCRIPT_FUNCTION::GetFirstScriptCommand();
+            const auto table = RE::SCRIPT_FUNCTION::GetFirstScriptCommand();
             if (!table) {
                 a_error = "provider " + std::to_string(a_providerID) + ": Skyrim script-command table is unavailable";
                 return nullptr;
@@ -303,7 +303,7 @@ namespace Variables::Providers {
                                                     std::string& a_error) {
         a_error.clear();
         try {
-            auto provider = detail::ResolveVanillaProvider(a_providerID, a_error);
+            const auto provider = detail::ResolveVanillaProvider(a_providerID, a_error);
             if (!provider) {
                 return {};
             }

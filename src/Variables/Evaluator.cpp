@@ -27,8 +27,8 @@ namespace Variables {
             bool Run() {
                 if (!subject || !holder) return Fail("animation graph subject is unavailable");
                 std::vector<PreparedOutput> prepared;
-                prepared.reserve(group.roots.size());
-                for (const auto index : group.roots) {
+                prepared.reserve(group.graph_variable_indices.size());
+                for (const auto index : group.graph_variable_indices) {
                     if (index >= group.definitions.size()) {
                         return Fail("root definition index is out of range");
                     }
@@ -62,13 +62,13 @@ namespace Variables {
                 return true;
             }
 
-            const std::optional<EvaluationFailure>& Failure() const noexcept { return failure; }
+            [[nodiscard]] const std::optional<EvaluationFailure>& Failure() const noexcept { return failure; }
 
         private:
             bool Fail(std::string a_reason, const std::string_view a_definition = {}) {
                 if (!failure)
-                    failure = EvaluationFailure{std::string(a_definition.empty() ? currentDefinition : a_definition),
-                                                std::move(a_reason)};
+                    failure = EvaluationFailure{.definition = std::string(a_definition.empty() ? currentDefinition : a_definition),
+                                                .reason = std::move(a_reason)};
                 return false;
             }
 
@@ -83,7 +83,7 @@ namespace Variables {
                     std::string_view& slot;
                     std::string_view value;
                     ~Restore() { slot = value; }
-                } restore{currentDefinition, previousDefinition};
+                } restore{.slot = currentDefinition, .value = previousDefinition};
                 bool gatePassed = definition.conditions.empty();
                 if (!gatePassed) {
                     for (const auto perk : definition.conditions) {
@@ -94,11 +94,11 @@ namespace Variables {
                     }
                 }
                 if (!gatePassed) {
-                    if (!definition.fallback) {
+                    if (!definition.else_val) {
                         a_result = 0.0f;
                         return true;
                     }
-                    if (!EvaluateSource(*definition.fallback, a_result)) return false;
+                    if (!EvaluateSource(*definition.else_val, a_result)) return false;
                     return std::isfinite(a_result) || Fail("else value is not finite");
                 }
                 if (!EvaluateSource(definition.value, a_result)) {
@@ -114,7 +114,7 @@ namespace Variables {
                 return true;
             }
 
-            bool EvaluateSource(const Source& a_source, float& a_result) {
+            bool EvaluateSource(const ValueSource& a_source, float& a_result) {
                 return std::visit(
                     [this, &a_result]<typename T>(const T& a_value) -> bool {
                         if constexpr (std::is_same_v<T, float>) {
@@ -179,7 +179,7 @@ namespace Variables {
                        (std::isfinite(a_result) || Fail("post operand is not finite"));
             }
 
-            bool Apply(const PostOperation& a_operation, float& a_value) {
+            bool Apply(const PostOp& a_operation, float& a_value) {
                 if (a_operation.type == PostOperationType::kAsin) {
                     if (a_value < -1.0f || a_value > 1.0f) return Fail("asin input is outside [-1, 1]");
                     a_value = std::asin(a_value);
@@ -228,7 +228,7 @@ namespace Variables {
                     return Fail(!std::isfinite(a_value) ? "output value is not finite" : "output type is unavailable",
                                 a_definition.name);
                 }
-                PreparedOutput output{a_definition.name, *a_definition.output_type, false};
+                PreparedOutput output{.name = a_definition.name, .type = *a_definition.output_type, .value = false};
                 switch (*a_definition.output_type) {
                     case GraphType::kBool:
                         output.value = a_value != 0.0f;
