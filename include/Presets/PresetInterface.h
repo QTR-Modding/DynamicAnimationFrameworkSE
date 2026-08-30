@@ -86,7 +86,8 @@ namespace Presets {
     AnimEvent GetMenuAnimEvent(std::string_view menu_name, MenuAnimEventType a_type);
 
     struct AnimData {
-        std::vector<Variables::AnimationEntry> animations;
+        std::vector<Animation> animations;
+        std::vector<Variables::CompiledGroupPtr> variables;
 
         int priority;
         std::unordered_set<DAF_API::AnimEventID> events;
@@ -121,7 +122,7 @@ namespace Presets {
 
         AnimData() = default;
         [[nodiscard]] bool TryLoad(AnimDataBlock& a_block,
-                                   const std::vector<Variables::CompiledGroupPtr>& a_variableGroups);
+                                   std::vector<Variables::CompiledGroupPtr> a_variableGroups);
     };
 
     inline std::shared_mutex m_anim_data_;

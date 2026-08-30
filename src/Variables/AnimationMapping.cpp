@@ -7,7 +7,7 @@ namespace Variables {
                                            const std::size_t a_animationCount, std::vector<CompiledGroupPtr>& a_groups,
                                            std::string& a_error) {
         a_error.clear();
-        a_groups.assign(a_animationCount, nullptr);
+        a_groups.clear();
         if (!a_document.IsObject()) return true;
 
         const rapidjson::Value* variables = nullptr;
@@ -33,6 +33,9 @@ namespace Variables {
             if (!value.IsString()) {
                 a_error = "variables entries must be a bare group name or null";
                 return false;
+            }
+            if (a_groups.empty()) {
+                a_groups.resize(a_animationCount);
             }
 
             const std::string_view groupName(value.GetString(), value.GetStringLength());

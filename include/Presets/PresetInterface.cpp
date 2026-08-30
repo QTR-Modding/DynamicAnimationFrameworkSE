@@ -142,7 +142,7 @@ namespace {
 }
 
 bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
-                                const std::vector<Variables::CompiledGroupPtr>& a_variableGroups) {
+                                std::vector<Variables::CompiledGroupPtr> a_variableGroups) {
     constexpr auto formtype_index_max = static_cast<int>(RE::FormType::Max);
     constexpr auto formtype_index_min = static_cast<int>(RE::FormType::None);
 
@@ -175,19 +175,23 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
 
     const auto names = a_block.anim_names.get();
     const auto durations = a_block.durations.get();
-    if (a_variableGroups.size() != names.size()) {
+    if (!a_variableGroups.empty() && a_variableGroups.size() != names.size()) {
         return false;
     }
+    variables = std::move(a_variableGroups);
 
-    size_t i = 0;
+    std::size_t i = 0;
     for (const auto& name : names) {
         RE::TESIdleForm* a_idle = nullptr;
         //if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0){
         //    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
         //}
         const auto duration = i < durations.size() ? durations[i] : 0;
-        animations.push_back(
-            {.animation = Animation{.a_idle = a_idle, .anim_name = a_idle ? "" : name, .t_wait_ms = static_cast<unsigned int>(duration)}, .variables = a_variableGroups[i]});
+        animations.push_back(Animation{
+            .a_idle = a_idle,
+            .anim_name = a_idle ? "" : name,
+            .t_wait_ms = static_cast<unsigned int>(duration)
+        });
         ++i;
     }
 
@@ -332,7 +336,7 @@ void Presets::Load() {
                     continue;
                 }
 
-                if (!anim_data.TryLoad(data, groups)) {
+                if (!anim_data.TryLoad(data, std::move(groups))) {
                     logger::error("Failed to load preset; skipping file: {}", file.path().string());
                     continue;
                 }

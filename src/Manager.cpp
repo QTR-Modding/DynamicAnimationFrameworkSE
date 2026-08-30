@@ -60,10 +60,12 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
 
         if (auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item});
             !anim_data.animations.empty()) {
-            auto animations = Variables::PrepareAnimations(std::move(anim_data.animations),
-                                                           a_info.a_item ? a_info.a_item->AsReference() : nullptr);
+            if (!anim_data.variables.empty()) {
+                Variables::PrepareAnimations(anim_data.animations, std::move(anim_data.variables),
+                                             a_info.a_item ? a_info.a_item->AsReference() : nullptr);
+            }
 
-            if (PlayAnimation(actor, {a_info.event_id, std::move(animations)})) {
+            if (PlayAnimation(actor, {a_info.event_id, std::move(anim_data.animations)})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
                     if (const auto actor_id = actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
                         // ReSharper disable once CppTooWideScopeInitStatement

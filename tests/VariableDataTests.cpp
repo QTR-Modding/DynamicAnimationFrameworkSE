@@ -195,8 +195,7 @@ namespace {
 
         auto document = Parse(R"json({"animations":["a","b"]})json");
         Check("mapping-omitted",
-              compiler.Compile(document, animationFile, 2, groups, error) && groups.size() == 2 && !groups[0] &&
-                  !groups[1],
+              compiler.Compile(document, animationFile, 2, groups, error) && groups.empty(),
               failures);
         document = Parse(R"json({"variables":[null,"valid"]})json");
         Check("mapping-null-index-preservation",
@@ -225,8 +224,7 @@ namespace {
               !compiler.Compile(document, daf / "other" / "Example" / "animations.json", 1, groups, error), failures);
         document = Parse(R"json({"variables":[null]})json");
         Check("mapping-success-clears-failure-state",
-              compiler.Compile(document, animationFile, 1, groups, error) && error.empty() && groups.size() == 1 &&
-                  !groups[0],
+              compiler.Compile(document, animationFile, 1, groups, error) && error.empty() && groups.empty(),
               failures);
         document = Parse(R"json({"variables":["valid","valid"]})json");
         Check("mapping-valid-cache-reuse",
