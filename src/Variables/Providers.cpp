@@ -1,5 +1,4 @@
 #include "Variables/Providers.h"
-
 #include "ProviderParameters.h"
 
 namespace Variables::Providers {
@@ -22,7 +21,7 @@ namespace Variables::Providers {
             std::array<ParameterDescriptor, 2> params{};
         };
 
-        SlotCodec GetSlotCodec(std::uint32_t a_providerID, std::size_t a_parameterIndex,
+        SlotCodec GetSlotCodec(const std::uint32_t a_providerID, const std::size_t a_parameterIndex,
                                const ParamTypeInfo& a_typeInfo) noexcept {
             if (a_typeInfo.kind == ParamKind::kForm) {
                 return SlotCodec::kFormPointer;
@@ -37,7 +36,7 @@ namespace Variables::Providers {
             return SlotCodec::kUnsupported;
         }
 
-        std::string ProviderPrefix(std::uint32_t a_id, std::string_view a_name) {
+        std::string ProviderPrefix(const std::uint32_t a_id, const std::string_view a_name) {
             std::string prefix = "provider " + std::to_string(a_id);
             if (!a_name.empty()) {
                 prefix += " (";
@@ -47,8 +46,8 @@ namespace Variables::Providers {
             return prefix;
         }
 
-        void SetEvaluationError(std::string& a_error, std::uint32_t a_id, std::string_view a_name,
-                                std::string_view a_reason) noexcept {
+        void SetEvaluationError(std::string& a_error, const std::uint32_t a_id, const std::string_view a_name,
+                                const std::string_view a_reason) noexcept {
             try {
                 a_error = ProviderPrefix(a_id, a_name) + ": " + std::string(a_reason);
             } catch (...) {
@@ -59,7 +58,7 @@ namespace Variables::Providers {
             }
         }
 
-        void SetEvaluationException(std::string& a_error, std::uint32_t a_id, std::string_view a_name,
+        void SetEvaluationException(std::string& a_error, const std::uint32_t a_id, const std::string_view a_name,
                                     const std::exception& a_exception) noexcept {
             try {
                 SetEvaluationError(a_error, a_id, a_name,
@@ -72,7 +71,7 @@ namespace Variables::Providers {
         bool NormalizeParameters(ProviderDescriptor& a_descriptor, std::string& a_error) {
             for (std::size_t i = 0; i < a_descriptor.numParams; ++i) {
                 auto& parameter = a_descriptor.params[i];
-                const auto* typeInfo = GetParamTypeInfo(parameter.type);
+                const auto typeInfo = GetParamTypeInfo(parameter.type);
                 if (!typeInfo) {
                     a_error = ProviderPrefix(a_descriptor.id, a_descriptor.name) + ": parameter " + std::to_string(i) +
                               " uses an unknown SCRIPT_PARAM_TYPE (" +
@@ -106,13 +105,13 @@ namespace Variables::Providers {
             return true;
         }
 
-        const RE::SCRIPT_FUNCTION* ResolveVanillaFunction(std::uint32_t a_providerID, std::string& a_error) {
+        const RE::SCRIPT_FUNCTION* ResolveVanillaFunction(const std::uint32_t a_providerID, std::string& a_error) {
             if (a_providerID >= RE::SCRIPT_FUNCTION::Commands::kScriptCommandsEnd) {
                 a_error = "provider " + std::to_string(a_providerID) +
                           ": IDs 736 and above are reserved and unavailable in this build";
                 return nullptr;
             }
-            auto* table = RE::SCRIPT_FUNCTION::GetFirstScriptCommand();
+            auto table = RE::SCRIPT_FUNCTION::GetFirstScriptCommand();
             if (!table) {
                 a_error = "provider " + std::to_string(a_providerID) + ": Skyrim script-command table is unavailable";
                 return nullptr;
@@ -130,8 +129,9 @@ namespace Variables::Providers {
             return std::addressof(function);
         }
 
-        std::optional<ProviderDescriptor> ResolveVanillaProvider(std::uint32_t a_providerID, std::string& a_error) {
-            const auto* function = ResolveVanillaFunction(a_providerID, a_error);
+        std::optional<ProviderDescriptor>
+        ResolveVanillaProvider(const std::uint32_t a_providerID, std::string& a_error) {
+            const auto function = ResolveVanillaFunction(a_providerID, a_error);
             if (!function) {
                 return std::nullopt;
             }
@@ -169,8 +169,8 @@ namespace Variables::Providers {
         using CompiledSlot = std::variant<std::monostate, TargetSlot, RE::TESForm*, std::uintptr_t>;
         using BindingLayout = std::array<CompiledSlot, 2>;
 
-        bool CompileArgument(const ProviderDescriptor& a_provider, std::size_t a_parameterIndex,
-                             std::size_t a_argumentIndex, const ProviderLiteral& a_argument, CompiledSlot& a_slot,
+        bool CompileArgument(const ProviderDescriptor& a_provider, const std::size_t a_parameterIndex,
+                             const std::size_t a_argumentIndex, const ProviderLiteral& a_argument, CompiledSlot& a_slot,
                              std::string& a_error) {
             const auto& parameter = a_provider.params[a_parameterIndex];
             const auto typeName = GetParamTypeName(parameter.type);
@@ -179,7 +179,7 @@ namespace Variables::Providers {
                                 " (" + typeName + ") ";
 
             if (parameter.codec == SlotCodec::kFormPointer) {
-                const auto* form = std::get_if<RE::TESForm*>(std::addressof(a_argument));
+                const auto form = std::get_if<RE::TESForm*>(std::addressof(a_argument));
                 if (!form) {
                     a_error = prefix + "must be a Form identifier string";
                     return false;
@@ -192,7 +192,7 @@ namespace Variables::Providers {
                 return true;
             }
 
-            const auto* number = std::get_if<double>(std::addressof(a_argument));
+            const auto number = std::get_if<double>(std::addressof(a_argument));
             if (!number) {
                 a_error = prefix + "must be a number";
                 return false;
@@ -225,7 +225,8 @@ namespace Variables::Providers {
         }
 
         std::optional<BindingLayout> CompileLayout(const ProviderDescriptor& a_provider,
-                                                   std::span<const ProviderLiteral> a_arguments, bool a_insertTarget,
+                                                   const std::span<const ProviderLiteral> a_arguments,
+                                                   const bool a_insertTarget,
                                                    std::string& a_error) {
             BindingLayout layout;
             std::size_t firstLiteralParameter = 0;
@@ -261,7 +262,7 @@ namespace Variables::Providers {
             return layout;
         }
 
-        bool MaterializeSlot(const ProviderDescriptor& a_provider, std::size_t a_parameterIndex,
+        bool MaterializeSlot(const ProviderDescriptor& a_provider, const std::size_t a_parameterIndex,
                              const CompiledSlot& a_slot, RE::TESObjectREFR* a_target, void*& a_result,
                              std::string& a_error) {
             a_result = nullptr;
@@ -273,7 +274,7 @@ namespace Variables::Providers {
                 a_result = static_cast<void*>(a_target);
                 return true;
             }
-            if (const auto* form = std::get_if<RE::TESForm*>(std::addressof(a_slot))) {
+            if (const auto form = std::get_if<RE::TESForm*>(std::addressof(a_slot))) {
                 a_result = ResolveFormPointer(a_provider.params[a_parameterIndex].type, *form);
                 if (!a_result) {
                     SetEvaluationError(a_error, a_provider.id, a_provider.name,
@@ -283,7 +284,7 @@ namespace Variables::Providers {
                 }
                 return true;
             }
-            if (const auto* number = std::get_if<std::uintptr_t>(std::addressof(a_slot))) {
+            if (const auto number = std::get_if<std::uintptr_t>(std::addressof(a_slot))) {
                 a_result = reinterpret_cast<void*>(*number);
             }
             return true;
@@ -297,8 +298,8 @@ namespace Variables::Providers {
         bool targetEligible{false};
     };
 
-    std::shared_ptr<const ProviderCall> CompileCall(std::uint32_t a_providerID,
-                                                    std::span<const ProviderLiteral> a_arguments,
+    std::shared_ptr<const ProviderCall> CompileCall(const std::uint32_t a_providerID,
+                                                    const std::span<const ProviderLiteral> a_arguments,
                                                     std::string& a_error) {
         a_error.clear();
         try {
@@ -347,7 +348,7 @@ namespace Variables::Providers {
                 detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name, "Subject is missing");
                 return false;
             }
-            const auto* function = detail::ResolveVanillaFunction(a_call.provider.id, a_error);
+            const auto function = detail::ResolveVanillaFunction(a_call.provider.id, a_error);
             if (!function || !function->conditionFunction) {
                 if (function) {
                     detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name,
@@ -356,7 +357,7 @@ namespace Variables::Providers {
                 return false;
             }
 
-            const auto* layout = a_target && a_call.targetEligible
+            const auto layout = a_target && a_call.targetEligible
                                      ? std::addressof(a_call.withTarget)
                                      : std::addressof(a_call.withoutTarget);
             if (!*layout) {

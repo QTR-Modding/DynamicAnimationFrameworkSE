@@ -1,16 +1,14 @@
 #include "Variables/Compiler.h"
-
 #include <rapidjson/error/en.h>
-
 #include <unordered_set>
-
 #include "CLibUtilsQTR/FormReader.hpp"
+
 
 namespace Variables {
     namespace {
         using DefinitionMap = std::unordered_map<std::string, std::size_t>;
 
-        std::string Prefix(std::string_view a_context, std::string_view a_definition) {
+        std::string Prefix(const std::string_view a_context, const std::string_view a_definition) {
             std::string result(a_context);
             if (!a_definition.empty()) {
                 result += " [";
@@ -20,13 +18,13 @@ namespace Variables {
             return result;
         }
 
-        bool Fail(std::string& a_error, std::string_view a_context, std::string_view a_message) {
+        bool Fail(std::string& a_error, const std::string_view a_context, const std::string_view a_message) {
             a_error = std::string(a_context) + ": " + std::string(a_message);
             return false;
         }
 
         bool ReadFiniteFloat(const rapidjson::Value& a_value, float& a_result, std::string& a_error,
-                             std::string_view a_context) {
+                             const std::string_view a_context) {
             if (!a_value.IsNumber()) {
                 return Fail(a_error, a_context, "expected a number");
             }
@@ -38,7 +36,7 @@ namespace Variables {
             return true;
         }
 
-        bool IsPluginQualifiedForm(std::string_view a_value) {
+        bool IsPluginQualifiedForm(const std::string_view a_value) {
             if (!a_value.starts_with("0x") && !a_value.starts_with("0X")) {
                 return false;
             }
@@ -56,7 +54,7 @@ namespace Variables {
         }
 
         bool ReadGraphType(const rapidjson::Value& a_value, GraphType& a_result, std::string& a_error,
-                           std::string_view a_context) {
+                           const std::string_view a_context) {
             if (!a_value.IsInt()) {
                 return Fail(a_error, a_context, "expected integer type 0, 1, or 2");
             }
@@ -75,8 +73,8 @@ namespace Variables {
             }
         }
 
-        bool ResolveEarlier(std::string_view a_name, const DefinitionMap& a_definitions, std::size_t& a_result,
-                            std::string& a_error, std::string_view a_context) {
+        bool ResolveEarlier(const std::string_view a_name, const DefinitionMap& a_definitions, std::size_t& a_result,
+                            std::string& a_error, const std::string_view a_context) {
             if (a_name.empty()) {
                 return Fail(a_error, a_context, "variable reference cannot be empty");
             }
@@ -89,7 +87,7 @@ namespace Variables {
         }
 
         bool CompileOperand(const rapidjson::Value& a_value, const DefinitionMap& a_definitions, Operand& a_result,
-                            std::string& a_error, std::string_view a_context) {
+                            std::string& a_error, const std::string_view a_context) {
             if (a_value.IsNumber()) {
                 float literal;
                 if (!ReadFiniteFloat(a_value, literal, a_error, a_context)) {
@@ -110,7 +108,7 @@ namespace Variables {
         }
 
         bool CompileSource(const rapidjson::Value& a_value, const DefinitionMap& a_definitions, Source& a_result,
-                           std::string& a_error, std::string_view a_context) {
+                           std::string& a_error, const std::string_view a_context) {
             if (a_value.IsBool()) {
                 a_result = a_value.GetBool() ? 1.0f : 0.0f;
                 return true;
@@ -126,8 +124,8 @@ namespace Variables {
             if (a_value.IsString()) {
                 const std::string value = a_value.GetString();
                 if (IsPluginQualifiedForm(value)) {
-                    auto* form = FormReader::GetFormFromString(value);
-                    auto* global = form ? form->As<RE::TESGlobal>() : nullptr;
+                    auto form = FormReader::GetFormFromString(value);
+                    auto global = form ? form->As<RE::TESGlobal>() : nullptr;
                     if (!global) {
                         return Fail(a_error, a_context, "FormID source did not resolve to TESGlobal");
                     }
@@ -171,7 +169,7 @@ namespace Variables {
                     }
                     arguments.emplace_back(number);
                 } else if (argument.IsString() && IsPluginQualifiedForm(argument.GetString())) {
-                    auto* form = FormReader::GetFormFromString(argument.GetString());
+                    auto form = FormReader::GetFormFromString(argument.GetString());
                     if (!form) {
                         return Fail(a_error, std::string(a_context) + '[' + std::to_string(i) + ']',
                                     "Form identifier did not resolve");
@@ -192,7 +190,7 @@ namespace Variables {
         }
 
         bool CompileConditions(const rapidjson::Value& a_value, std::vector<RE::BGSPerk*>& a_result,
-                               std::string& a_error, std::string_view a_context) {
+                               std::string& a_error, const std::string_view a_context) {
             if (!a_value.IsArray()) {
                 return Fail(a_error, a_context, "conditions must be an array");
             }
@@ -200,8 +198,8 @@ namespace Variables {
                 if (!entry.IsString() || !IsPluginQualifiedForm(entry.GetString())) {
                     return Fail(a_error, a_context, "each condition must be a plugin-qualified BGSPerk FormID");
                 }
-                auto* form = FormReader::GetFormFromString(entry.GetString());
-                auto* perk = form ? form->As<RE::BGSPerk>() : nullptr;
+                auto form = FormReader::GetFormFromString(entry.GetString());
+                auto perk = form ? form->As<RE::BGSPerk>() : nullptr;
                 if (!perk) {
                     return Fail(a_error, a_context, "condition FormID did not resolve to BGSPerk");
                 }
@@ -211,7 +209,7 @@ namespace Variables {
         }
 
         bool CompilePost(const rapidjson::Value& a_value, const DefinitionMap& a_definitions,
-                         std::vector<PostOperation>& a_result, std::string& a_error, std::string_view a_context) {
+                         std::vector<PostOperation>& a_result, std::string& a_error, const std::string_view a_context) {
             if (!a_value.IsObject()) {
                 return Fail(a_error, a_context, "post must be an object");
             }
@@ -266,9 +264,9 @@ namespace Variables {
             return true;
         }
 
-        bool CompileDefinition(std::string_view a_name, const rapidjson::Value& a_value,
+        bool CompileDefinition(const std::string_view a_name, const rapidjson::Value& a_value,
                                const DefinitionMap& a_definitions, Definition& a_result, std::string& a_error,
-                               std::string_view a_context) {
+                               const std::string_view a_context) {
             a_result.name = a_name;
             const auto definitionContext = Prefix(a_context, a_name);
             if (a_value.IsBool() || a_value.IsNumber()) {

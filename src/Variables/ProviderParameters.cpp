@@ -3,88 +3,88 @@
 namespace Variables::Providers::detail {
     namespace {
         constexpr std::array kParamTypeTable{
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kChar, ParamKind::kUnsupported, "Char/String"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kInt, ParamKind::kInt, "Int"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kFloat, ParamKind::kFloat, "Float"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kInventoryObject, ParamKind::kForm, "InventoryObject"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kObjectRef, ParamKind::kForm, "ObjectRef"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kActorValue, ParamKind::kInt, "ActorValue"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kActor, ParamKind::kForm, "Actor"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kSpellItem, ParamKind::kForm, "SpellItem"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kAxis, ParamKind::kInt, "Axis"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kCell, ParamKind::kForm, "Cell"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kAnimGroup, ParamKind::kInt, "AnimGroup"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kMagicItem, ParamKind::kForm, "MagicItem"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kSound, ParamKind::kForm, "Sound"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kTopic, ParamKind::kForm, "Topic"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kQuest, ParamKind::kForm, "Quest"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kRace, ParamKind::kForm, "Race"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kClass, ParamKind::kForm, "Class"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kFaction, ParamKind::kForm, "Faction"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kSex, ParamKind::kInt, "Sex"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kGlobal, ParamKind::kForm, "Global"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kFurnitureOrFormList, ParamKind::kForm, "FurnitureOrFormList"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kObject, ParamKind::kForm, "Object"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kScriptVar, ParamKind::kUnsupported, "ScriptVar"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kStage, ParamKind::kInt, "Stage"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kMapMarker, ParamKind::kForm, "MapMarker"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kActorBase, ParamKind::kForm, "ActorBase"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kContainerRef, ParamKind::kForm, "ContainerRef"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kWorldOrList, ParamKind::kForm, "WorldOrList"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kCrimeType, ParamKind::kInt, "CrimeType"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kPackage, ParamKind::kForm, "Package"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kCombatStyle, ParamKind::kForm, "CombatStyle"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kMagicEffect, ParamKind::kForm, "MagicEffect"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kFormType, ParamKind::kInt, "FormType"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kWeather, ParamKind::kForm, "Weather"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kNPC, ParamKind::kForm, "NPC"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kOwner, ParamKind::kForm, "Owner"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kShaderEffect, ParamKind::kForm, "ShaderEffect"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kFormList, ParamKind::kForm, "FormList"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kMenuIcon, ParamKind::kForm, "MenuIcon"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kPerk, ParamKind::kForm, "Perk"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kNote, ParamKind::kForm, "Note"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kMiscStat, ParamKind::kInt, "MiscStat"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kImagespaceMod, ParamKind::kForm, "ImagespaceMod"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kImagespace, ParamKind::kForm, "Imagespace"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kVATSValue, ParamKind::kUnsupported, "VATSValue"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kVATSValueData, ParamKind::kUnsupported, "VATSValueData"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kEventFunction, ParamKind::kUnsupported, "EventFunction"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kEventFunctionMember, ParamKind::kUnsupported, "EventFunctionMember"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kEventFunctionData, ParamKind::kUnsupported, "EventFunctionData"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kVoiceType, ParamKind::kForm, "VoiceType"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kEncounterZone, ParamKind::kForm, "EncounterZone"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kIdleForm, ParamKind::kForm, "IdleForm"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kMessage, ParamKind::kForm, "Message"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kInvObjectOrFormList, ParamKind::kForm, "InvObjectOrFormList"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kAlignment, ParamKind::kInt, "Alignment"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kEquipType, ParamKind::kForm, "EquipType"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kObjectOrFormList, ParamKind::kForm, "ObjectOrFormList"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kMusic, ParamKind::kForm, "Music"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kCritStage, ParamKind::kInt, "CritStage"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kKeyword, ParamKind::kForm, "Keyword"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kRefType, ParamKind::kForm, "RefType"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kLocation, ParamKind::kForm, "Location"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kForm, ParamKind::kForm, "Form"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kAlias, ParamKind::kInt, "Alias"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kShout, ParamKind::kForm, "Shout"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kWordOfPower, ParamKind::kForm, "WordOfPower"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kRelationshipRank, ParamKind::kInt, "RelationshipRank"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kBGSScene, ParamKind::kForm, "BGSScene"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kCastingSource, ParamKind::kInt, "CastingSource"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kAssociationType, ParamKind::kForm, "AssociationType"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kWardState, ParamKind::kInt, "WardState"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kPackageDataCanBeNull, ParamKind::kUnsupported,
-                          "PackageDataCanBeNull"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kPackageDataNumeric, ParamKind::kUnsupported, "PackageDataNumeric"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kFurnitureAnimType, ParamKind::kInt, "FurnitureAnimType"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kFurnitureEntryType, ParamKind::kInt, "FurnitureEntryType"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kVMScriptVar, ParamKind::kUnsupported, "VMScriptVar"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kReferenceEffect, ParamKind::kForm, "ReferenceEffect"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kPackageData, ParamKind::kUnsupported, "PackageData"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kSkillAction, ParamKind::kInt, "SkillAction"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kKnowableForm, ParamKind::kForm, "KnowableForm"},
-            ParamTypeInfo{RE::SCRIPT_PARAM_TYPE::kRegion, ParamKind::kForm, "Region"}};
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kChar, .kind = ParamKind::kUnsupported, .name = "Char/String"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kInt, .kind = ParamKind::kInt, .name = "Int"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kFloat, .kind = ParamKind::kFloat, .name = "Float"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kInventoryObject, .kind = ParamKind::kForm, .name = "InventoryObject"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kObjectRef, .kind = ParamKind::kForm, .name = "ObjectRef"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kActorValue, .kind = ParamKind::kInt, .name = "ActorValue"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kActor, .kind = ParamKind::kForm, .name = "Actor"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kSpellItem, .kind = ParamKind::kForm, .name = "SpellItem"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kAxis, .kind = ParamKind::kInt, .name = "Axis"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kCell, .kind = ParamKind::kForm, .name = "Cell"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kAnimGroup, .kind = ParamKind::kInt, .name = "AnimGroup"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kMagicItem, .kind = ParamKind::kForm, .name = "MagicItem"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kSound, .kind = ParamKind::kForm, .name = "Sound"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kTopic, .kind = ParamKind::kForm, .name = "Topic"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kQuest, .kind = ParamKind::kForm, .name = "Quest"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kRace, .kind = ParamKind::kForm, .name = "Race"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kClass, .kind = ParamKind::kForm, .name = "Class"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kFaction, .kind = ParamKind::kForm, .name = "Faction"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kSex, .kind = ParamKind::kInt, .name = "Sex"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kGlobal, .kind = ParamKind::kForm, .name = "Global"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kFurnitureOrFormList, .kind = ParamKind::kForm, .name = "FurnitureOrFormList"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kObject, .kind = ParamKind::kForm, .name = "Object"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kScriptVar, .kind = ParamKind::kUnsupported, .name = "ScriptVar"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kStage, .kind = ParamKind::kInt, .name = "Stage"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kMapMarker, .kind = ParamKind::kForm, .name = "MapMarker"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kActorBase, .kind = ParamKind::kForm, .name = "ActorBase"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kContainerRef, .kind = ParamKind::kForm, .name = "ContainerRef"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kWorldOrList, .kind = ParamKind::kForm, .name = "WorldOrList"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kCrimeType, .kind = ParamKind::kInt, .name = "CrimeType"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kPackage, .kind = ParamKind::kForm, .name = "Package"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kCombatStyle, .kind = ParamKind::kForm, .name = "CombatStyle"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kMagicEffect, .kind = ParamKind::kForm, .name = "MagicEffect"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kFormType, .kind = ParamKind::kInt, .name = "FormType"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kWeather, .kind = ParamKind::kForm, .name = "Weather"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kNPC, .kind = ParamKind::kForm, .name = "NPC"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kOwner, .kind = ParamKind::kForm, .name = "Owner"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kShaderEffect, .kind = ParamKind::kForm, .name = "ShaderEffect"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kFormList, .kind = ParamKind::kForm, .name = "FormList"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kMenuIcon, .kind = ParamKind::kForm, .name = "MenuIcon"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kPerk, .kind = ParamKind::kForm, .name = "Perk"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kNote, .kind = ParamKind::kForm, .name = "Note"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kMiscStat, .kind = ParamKind::kInt, .name = "MiscStat"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kImagespaceMod, .kind = ParamKind::kForm, .name = "ImagespaceMod"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kImagespace, .kind = ParamKind::kForm, .name = "Imagespace"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kVATSValue, .kind = ParamKind::kUnsupported, .name = "VATSValue"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kVATSValueData, .kind = ParamKind::kUnsupported, .name = "VATSValueData"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kEventFunction, .kind = ParamKind::kUnsupported, .name = "EventFunction"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kEventFunctionMember, .kind = ParamKind::kUnsupported, .name = "EventFunctionMember"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kEventFunctionData, .kind = ParamKind::kUnsupported, .name = "EventFunctionData"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kVoiceType, .kind = ParamKind::kForm, .name = "VoiceType"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kEncounterZone, .kind = ParamKind::kForm, .name = "EncounterZone"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kIdleForm, .kind = ParamKind::kForm, .name = "IdleForm"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kMessage, .kind = ParamKind::kForm, .name = "Message"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kInvObjectOrFormList, .kind = ParamKind::kForm, .name = "InvObjectOrFormList"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kAlignment, .kind = ParamKind::kInt, .name = "Alignment"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kEquipType, .kind = ParamKind::kForm, .name = "EquipType"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kObjectOrFormList, .kind = ParamKind::kForm, .name = "ObjectOrFormList"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kMusic, .kind = ParamKind::kForm, .name = "Music"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kCritStage, .kind = ParamKind::kInt, .name = "CritStage"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kKeyword, .kind = ParamKind::kForm, .name = "Keyword"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kRefType, .kind = ParamKind::kForm, .name = "RefType"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kLocation, .kind = ParamKind::kForm, .name = "Location"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kForm, .kind = ParamKind::kForm, .name = "Form"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kAlias, .kind = ParamKind::kInt, .name = "Alias"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kShout, .kind = ParamKind::kForm, .name = "Shout"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kWordOfPower, .kind = ParamKind::kForm, .name = "WordOfPower"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kRelationshipRank, .kind = ParamKind::kInt, .name = "RelationshipRank"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kBGSScene, .kind = ParamKind::kForm, .name = "BGSScene"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kCastingSource, .kind = ParamKind::kInt, .name = "CastingSource"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kAssociationType, .kind = ParamKind::kForm, .name = "AssociationType"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kWardState, .kind = ParamKind::kInt, .name = "WardState"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kPackageDataCanBeNull, .kind = ParamKind::kUnsupported,
+                          .name = "PackageDataCanBeNull"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kPackageDataNumeric, .kind = ParamKind::kUnsupported, .name = "PackageDataNumeric"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kFurnitureAnimType, .kind = ParamKind::kInt, .name = "FurnitureAnimType"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kFurnitureEntryType, .kind = ParamKind::kInt, .name = "FurnitureEntryType"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kVMScriptVar, .kind = ParamKind::kUnsupported, .name = "VMScriptVar"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kReferenceEffect, .kind = ParamKind::kForm, .name = "ReferenceEffect"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kPackageData, .kind = ParamKind::kUnsupported, .name = "PackageData"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kSkillAction, .kind = ParamKind::kInt, .name = "SkillAction"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kKnowableForm, .kind = ParamKind::kForm, .name = "KnowableForm"},
+            ParamTypeInfo{.type = RE::SCRIPT_PARAM_TYPE::kRegion, .kind = ParamKind::kForm, .name = "Region"}};
 
         static_assert(kParamTypeTable.size() == 81);
 
@@ -103,7 +103,7 @@ namespace Variables::Providers::detail {
 
         template <class T>
         void* AsForm(RE::TESForm* a_form) noexcept {
-            if (auto* result = a_form->As<T>()) {
+            if (auto result = a_form->As<T>()) {
                 return static_cast<void*>(result);
             }
             return nullptr;
@@ -120,7 +120,7 @@ namespace Variables::Providers::detail {
     }
 
     std::string GetParamTypeName(const RE::SCRIPT_PARAM_TYPE a_type) {
-        if (const auto* info = GetParamTypeInfo(a_type)) {
+        if (const auto info = GetParamTypeInfo(a_type)) {
             return std::string(info->name);
         }
         return "unknown SCRIPT_PARAM_TYPE " + std::to_string(static_cast<std::uint32_t>(a_type));
@@ -159,14 +159,14 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kGlobal:
                 return AsForm<RE::TESGlobal>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kFurnitureOrFormList:
-                if (auto* result = AsForm<RE::TESFurniture>(a_form)) {
+                if (auto result = AsForm<RE::TESFurniture>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::BGSListForm>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kObject:
                 return AsForm<RE::TESObject>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kMapMarker:
-                if (auto* reference = a_form->As<RE::TESObjectREFR>();
+                if (auto reference = a_form->As<RE::TESObjectREFR>();
                     reference && reference->extraList.HasType<RE::ExtraMapMarker>()) {
                     return reference;
                 }
@@ -175,12 +175,12 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kNPC:
                 return AsForm<RE::TESNPC>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kContainerRef:
-                if (auto* reference = a_form->As<RE::TESObjectREFR>(); reference && reference->GetContainer()) {
+                if (auto reference = a_form->As<RE::TESObjectREFR>(); reference && reference->GetContainer()) {
                     return reference;
                 }
                 return nullptr;
             case RE::SCRIPT_PARAM_TYPE::kWorldOrList:
-                if (auto* result = AsForm<RE::TESWorldSpace>(a_form)) {
+                if (auto result = AsForm<RE::TESWorldSpace>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::BGSListForm>(a_form);
@@ -193,7 +193,7 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kWeather:
                 return AsForm<RE::TESWeather>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kOwner:
-                if (auto* result = AsForm<RE::TESNPC>(a_form)) {
+                if (auto result = AsForm<RE::TESNPC>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::TESFaction>(a_form);
@@ -220,14 +220,14 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kMessage:
                 return AsForm<RE::BGSMessage>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kInvObjectOrFormList:
-                if (auto* result = AsForm<RE::TESBoundObject>(a_form)) {
+                if (auto result = AsForm<RE::TESBoundObject>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::BGSListForm>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kEquipType:
                 return AsForm<RE::BGSEquipSlot>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kObjectOrFormList:
-                if (auto* result = AsForm<RE::TESObject>(a_form)) {
+                if (auto result = AsForm<RE::TESObject>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::BGSListForm>(a_form);
@@ -252,10 +252,10 @@ namespace Variables::Providers::detail {
             case RE::SCRIPT_PARAM_TYPE::kReferenceEffect:
                 return AsForm<RE::BGSReferenceEffect>(a_form);
             case RE::SCRIPT_PARAM_TYPE::kKnowableForm:
-                if (auto* result = AsForm<RE::EffectSetting>(a_form)) {
+                if (auto result = AsForm<RE::EffectSetting>(a_form)) {
                     return result;
                 }
-                if (auto* result = AsForm<RE::TESWordOfPower>(a_form)) {
+                if (auto result = AsForm<RE::TESWordOfPower>(a_form)) {
                     return result;
                 }
                 return AsForm<RE::EnchantmentItem>(a_form);

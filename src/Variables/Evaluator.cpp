@@ -1,7 +1,6 @@
 #include "Variables/Evaluator.h"
-
 #include "Variables/Providers.h"
-#include "logger.h"
+
 
 namespace Variables {
     namespace {
@@ -66,7 +65,7 @@ namespace Variables {
             const std::optional<EvaluationFailure>& Failure() const noexcept { return failure; }
 
         private:
-            bool Fail(std::string a_reason, std::string_view a_definition = {}) {
+            bool Fail(std::string a_reason, const std::string_view a_definition = {}) {
                 if (!failure)
                     failure = EvaluationFailure{std::string(a_definition.empty() ? currentDefinition : a_definition),
                                                 std::move(a_reason)};
@@ -87,7 +86,7 @@ namespace Variables {
                 } restore{currentDefinition, previousDefinition};
                 bool gatePassed = definition.conditions.empty();
                 if (!gatePassed) {
-                    for (const auto* perk : definition.conditions) {
+                    for (const auto perk : definition.conditions) {
                         if (perk->perkConditions.IsTrue(subject, target)) {
                             gatePassed = true;
                             break;

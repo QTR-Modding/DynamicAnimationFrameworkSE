@@ -22,7 +22,7 @@ namespace {
 
     template <typename T>
     bool any_in_set(const std::unordered_set<T*>& s, const std::vector<T*>& v) {
-        for (auto* x : v) {
+        for (auto x : v) {
             if (s.contains(x)) return true;
         }
         return false;

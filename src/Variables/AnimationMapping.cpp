@@ -1,5 +1,4 @@
 #include "Variables/AnimationMapping.h"
-
 #include "Variables/Compiler.h"
 
 namespace Variables {
