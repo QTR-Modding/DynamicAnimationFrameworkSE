@@ -127,7 +127,7 @@ A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 | `"baseSpeed"` | An earlier definition |
 | `"0x802~MyMod.esp"` | A `TESGlobal` value |
 | `["II_AnimationSpeed", 2]` | A graph variable value |
-| `[24]` or `[6, 88]` | A condition-function result |
+| `[24]` | `GetScale()` result; see [condition functions](#use-a-condition-function-advanced) |
 
 A FormID string must use `0x...~Plugin` format. Any other string names an
 earlier definition.
@@ -243,8 +243,11 @@ Use `[functionID, arguments...]` to get a vanilla condition-function result:
 }
 ```
 
-Find IDs in the
-[Creation Kit condition-function list](https://ck.uesp.net/wiki/Condition_Functions).
+The first number is the function ID. Find it in CommonLib's
+[`RE::FUNCTION_DATA::FunctionID` enum](https://github.com/alandtse/CommonLibVR/blob/ff333fc83e2351735aacaea3ba1714722b1d2b61/include/RE/T/TESCondition.h#L33).
+For example, `kGetScale = 24`. The
+[Creation Kit list](https://ck.uesp.net/wiki/Condition_Functions) explains what
+each function does and which parameters it takes.
 
 DAF always supplies the animation actor as Subject. Target is the event
 reference, when one exists.
