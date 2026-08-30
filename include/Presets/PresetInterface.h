@@ -39,6 +39,9 @@ namespace Presets {
             boost::pfr::for_each_field(*this, [&](auto& field) {
                 field.load(a_block);
             });
+            if (const auto animationCount = anim_names.get().size(); variables.get().size() < animationCount) {
+                variables.get().resize(animationCount);
+            }
         }
     };
 
