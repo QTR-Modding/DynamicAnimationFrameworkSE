@@ -1,6 +1,7 @@
 #include "Variables/AnimationMapping.h"
 #include "Variables/Compiler.h"
 
+
 namespace Variables {
     bool AnimationMappingCompiler::Compile(const std::vector<std::string>& a_variables,
                                            const std::filesystem::path& a_animationFile,

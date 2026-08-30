@@ -4,6 +4,7 @@
 #include <rapidjson/error/en.h>
 #include "Variables/AnimationMapping.h"
 
+
 namespace {
     template <typename T>
     T* FindDynamicFormByEditorID(const std::string& editor_id) {
