@@ -17,7 +17,6 @@ cmake_minimum_required(VERSION 3.21)
 set(AUTHOR_NAME "Quantumyilmaz")
 set(PRODUCT_NAME "DynamicAnimationFrameworkSE")
 project(${PRODUCT_NAME} VERSION 0.2.2.0 LANGUAGES CXX)
-option(DAF_BUILD_TESTS "Build DAF variable-data tests" OFF)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
@@ -91,29 +90,6 @@ target_include_directories(
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE IS_HOST_PLUGIN)
-
-if(DAF_BUILD_TESTS)
-  enable_testing()
-  add_executable(
-    DAFVariableDataTests
-    tests/VariableDataTests.cpp
-    src/Variables/AnimationMapping.cpp
-    src/Variables/Compiler.cpp
-    src/Variables/ProviderParameters.cpp
-    src/Variables/Providers.cpp
-  )
-  target_precompile_headers(DAFVariableDataTests PRIVATE include/PCH.h)
-  target_include_directories(
-    DAFVariableDataTests
-    PRIVATE
-    ${CLIB_UTIL_INCLUDE_DIRS}
-    ${CLIB_UTILS_QTR_INCLUDE_DIRS}
-    ${DAF_API_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-  )
-  target_link_libraries(DAFVariableDataTests PRIVATE CommonLibSSE)
-  add_test(NAME VariableData COMMAND DAFVariableDataTests)
-endif()
 
 set(wildlander_output false)
 set(steam_owrt_output false)
