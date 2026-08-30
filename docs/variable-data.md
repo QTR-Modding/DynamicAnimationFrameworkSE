@@ -362,6 +362,9 @@ not use `else`, because `else` is selected only when the definition's
   Other animation-data files still load.
 - Before an animation, DAF calculates all graph outputs in its variable file.
   Helpers are calculated only when an output refers to them.
+- Calculation or conversion failure makes no graph writes. Graph variables are
+  then set in file order; if a later setter fails, earlier changes remain even
+  though the animation is skipped.
 - A bad graph name or type, missing Target, failed provider, or invalid
   calculation skips that animation and logs the reason. Later animations in the
   queue still run.
