@@ -10,7 +10,6 @@ configs.
 
 The example names `TakeItemCustom` and `II_AnimationSpeed` come from
 Monitor221hz's [Animated Interactions SKSE](https://www.nexusmods.com/skyrimspecialedition/mods/143798).
-Replace them with your own names if needed.
 
 Create one animation config and one variable file:
 
