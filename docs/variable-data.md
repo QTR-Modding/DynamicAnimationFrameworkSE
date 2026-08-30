@@ -69,8 +69,8 @@ The arrays match by position:
 - `TakeLow` uses no variable file.
 - `TakeHigh` uses `takeHigh.json`.
 
-`variables` may be omitted or empty. Otherwise, it must have one entry for
-every animation. Use `""` when an animation needs no variable file.
+`variables` may be omitted, empty, or shorter than `animations`. Missing
+trailing entries use no variable file. Use `""` to skip an earlier animation.
 
 Write only the file name, without `.json`. Folder names must match:
 `animData/MyMod` uses `varData/MyMod`.
