@@ -9,6 +9,23 @@
 
 
 namespace Presets {
+    using DurationValue = std::variant<int, std::string>;
+
+    namespace Getters::JSON {
+        template <>
+        inline bool GetScalar(const rapidjson::Value& a_value, DurationValue& a_result) {
+            if (a_value.IsInt()) {
+                a_result = a_value.GetInt();
+                return true;
+            }
+            if (a_value.IsString()) {
+                a_result = a_value.GetString();
+                return true;
+            }
+            return false;
+        }
+    }
+
     struct AnimDataBlock {
         Field<int, rapidjson::Value> priority = {"priority", 0};
         Field<std::vector<int>, rapidjson::Value> event_type = {"events"};
@@ -16,7 +33,7 @@ namespace Presets {
 
         Field<std::vector<std::string>, rapidjson::Value> anim_names = {"animations"};
         Field<std::vector<std::string>, rapidjson::Value> variables = {"variables"};
-        Field<std::vector<int>, rapidjson::Value> durations = {"durations"};
+        Field<std::vector<DurationValue>, rapidjson::Value> durations = {"durations"};
 
         Field<std::vector<std::string>, rapidjson::Value> forms = {"forms"};
         Field<std::vector<int>, rapidjson::Value> form_types = {"form_types"};
@@ -89,6 +106,7 @@ namespace Presets {
     struct AnimData {
         std::vector<Animation> animations;
         std::vector<Variables::CompiledGroupPtr> variables;
+        std::vector<std::optional<std::size_t>> duration_indices;
 
         int priority;
         std::unordered_set<DAF_API::AnimEventID> events;

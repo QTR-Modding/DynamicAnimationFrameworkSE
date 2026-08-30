@@ -175,7 +175,7 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
     priority = a_block.priority.get();
 
     const auto names = a_block.anim_names.get();
-    const auto durations = a_block.durations.get();
+    const auto& durations = a_block.durations.get();
     if (!a_variableGroups.empty() && a_variableGroups.size() != names.size()) {
         return false;
     }
@@ -187,7 +187,23 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
         //if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0){
         //    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
         //}
-        const auto duration = i < durations.size() ? durations[i] : 0;
+        auto duration = decltype(Animation::t_wait_ms){};
+        if (i < durations.size()) {
+            if (const auto milliseconds = std::get_if<int>(&durations[i])) {
+                duration = static_cast<decltype(duration)>(*milliseconds);
+            } else if (const auto& definitionName = std::get<std::string>(durations[i]);
+                       !definitionName.empty() && i < variables.size() && variables[i]) {
+                const auto& definitions = variables[i]->definitions;
+                const auto definition = std::ranges::find(definitions, definitionName, &Variables::Definition::name);
+                if (definition == definitions.end()) {
+                    logger::warn("Variable group '{}' has no duration definition '{}'; using 0",
+                                 variables[i]->context, definitionName);
+                } else {
+                    if (duration_indices.empty()) duration_indices.resize(names.size());
+                    duration_indices[i] = static_cast<std::size_t>(definition - definitions.begin());
+                }
+            }
+        }
         animations.push_back(Animation{
             .a_idle = a_idle,
             .anim_name = a_idle ? "" : name,
@@ -223,8 +239,10 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
         delay = a_delay;
     } else if (a_block.delay.get()) {
         int tot = 0;
-        for (const auto dur : durations) {
-            tot += dur;
+        for (const auto& duration : durations) {
+            if (const auto milliseconds = std::get_if<int>(&duration)) {
+                tot += *milliseconds;
+            }
         }
         if (tot > 0) {
             delay = tot;

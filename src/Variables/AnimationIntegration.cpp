@@ -3,6 +3,7 @@
 
 namespace Variables {
     void PrepareAnimations(std::vector<Animation>& a_animations, std::vector<CompiledGroupPtr> a_groups,
+                           const std::vector<std::optional<std::size_t>>& a_durationIndices,
                            RE::TESObjectREFR* a_target) {
         RE::ObjectRefHandle targetHandle;
         const bool targetExpected = a_target != nullptr;
@@ -13,9 +14,10 @@ namespace Variables {
         for (std::size_t i = 0; i < a_animations.size(); ++i) {
             auto& group = a_groups[i];
             if (!group) continue;
+            const auto durationIndex = i < a_durationIndices.size() ? a_durationIndices[i] : std::nullopt;
 
-            a_animations[i].before_play = [group = std::move(group), targetHandle, targetExpected](
-                RE::Actor* a_subject, const Animation&) {
+            a_animations[i].before_play = [group = std::move(group), durationIndex, targetHandle, targetExpected](
+                RE::Actor* a_subject, Animation& a_animation) {
                     RE::TESObjectREFRPtr target;
                     if (targetExpected) {
                         if (!targetHandle) {
@@ -28,7 +30,8 @@ namespace Variables {
                             return false;
                         }
                     }
-                    return EvaluateAndWrite(*group, a_subject, target.get());
+                    return EvaluateAndWrite(*group, a_subject, target.get(), durationIndex,
+                                            a_animation.t_wait_ms);
                 };
         }
     }

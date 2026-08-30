@@ -10,8 +10,8 @@ namespace Variables {
         a_error.clear();
         a_groups.clear();
         if (a_variables.empty()) return true;
-        if (a_variables.size() != a_animationCount) {
-            a_error = "variables must be an array with exactly one entry per animation";
+        if (a_variables.size() > a_animationCount) {
+            a_error = "variables cannot contain more entries than animations";
             return false;
         }
 

@@ -69,11 +69,36 @@ The arrays match by position:
 - `TakeLow` uses no variable file.
 - `TakeHigh` uses `takeHigh.json`.
 
-`variables` may be omitted or empty. Otherwise, it must have one entry for
-every animation. Use `""` when an animation needs no variable file.
+`variables` may be omitted, empty, or shorter than `animations`. Missing
+trailing entries use no variable file. Use `""` only to skip an animation
+before a later mapping. More entries than animations reject the config.
 
 Write only the file name, without `.json`. Folder names must match:
 `animData/MyMod` uses `varData/MyMod`.
+
+## Calculate a duration
+
+`durations` accepts static milliseconds and definition names together:
+
+```json
+{
+  "animations": ["Take", "TakeHigh"],
+  "variables": ["take", "takeHigh"],
+  "durations": ["durationMs", 3200]
+}
+```
+
+`durationMs` is evaluated from `take.json` immediately before `Take` plays.
+It can use everything described below, including conditions, globals,
+condition functions, graph reads, and `post`. Its decimal part is discarded.
+
+An omitted duration, an empty definition name, or no variable file mapped to
+that animation uses `0`. A missing definition also uses `0` and logs a warning.
+If an existing definition cannot be calculated or is outside the supported
+millisecond range, that animation is skipped.
+
+`delay: true` totals only static durations. Use a numeric `delay` when durations
+are calculated at play time.
 
 ## Write a variable file
 
