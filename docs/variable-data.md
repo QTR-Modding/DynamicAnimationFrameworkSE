@@ -1,32 +1,25 @@
-# Animation graph variable data
+# Animation graph variables
 
-DAF can calculate and set animation graph variables immediately before an
-animation plays. Each animation may use its own variable file.
+DAF can set animation graph variables immediately before an animation plays.
 
-DAF does not add animations, animation events, or variables to a behavior
-graph. They must already exist, and every graph variable name and type in these
-files must match the behavior exactly. DAF loads its configuration at startup,
-so restart Skyrim after editing it.
+The animation event and graph variables must already exist in your behavior
+files. Their names and types must match. Restart Skyrim after editing DAF
+configs.
 
 ## Quick start
 
-This example assumes the behavior already contains the animation event
-`TakeItemCustom` and the float variable `II_AnimationSpeed`. Those names come
-from Animated Interactions; replace them with names provided by your behavior.
+This example assumes your behavior already contains `TakeItemCustom` and
+`II_AnimationSpeed`. Replace them with your own names if needed.
 
-Create these files:
+Create one animation config and one variable file:
 
 ```text
 Data/SKSE/Plugins/DAF/
-  animData/
-    MyMod/
-      pickup.json
-  varData/
-    MyMod/
-      take.json
+  animData/MyMod/pickup.json
+  varData/MyMod/take.json
 ```
 
-Add `variables` to the animation config:
+In `pickup.json`, add `variables`:
 
 ```json
 {
@@ -36,8 +29,8 @@ Add `variables` to the animation config:
 }
 ```
 
-In this example, DAF event `5` is item pickup. `variables[0]` belongs to
-`animations[0]`, so `take` selects `varData/MyMod/take.json`.
+Event `5` is item pickup. `variables[0]` belongs to `animations[0]`. Here,
+`take` means `varData/MyMod/take.json`.
 
 Put this in `take.json`:
 
@@ -50,20 +43,20 @@ Put this in `take.json`:
 }
 ```
 
-Before DAF sends `TakeItemCustom`, it sets the float graph variable
+Before `TakeItemCustom` plays, DAF sets the float graph variable
 `II_AnimationSpeed` to `1.5`.
 
-The graph types are:
+`type` tells DAF what to write:
 
-| `type` | Graph variable type |
+| `type` | Writes |
 | ---: | --- |
-| `0` | Boolean |
-| `1` | Integer |
+| `0` | Boolean: `0` is false; any other valid number is true |
+| `1` | Integer: removes the decimal part |
 | `2` | Float |
 
-## Matching animations to variable files
+## Match files to animations
 
-The `animations` and `variables` arrays are matched by position:
+The arrays match by position:
 
 ```json
 {
@@ -72,25 +65,19 @@ The `animations` and `variables` arrays are matched by position:
 }
 ```
 
-This means:
-
 - `Take` uses `take.json`.
 - `TakeLow` uses no variable file.
 - `TakeHigh` uses `takeHigh.json`.
 
-Rules:
+`variables` may be omitted or empty. Otherwise, it must have one entry for
+every animation. Use `""` when an animation needs no variable file.
 
-- `variables` is optional. A non-empty array must have exactly one entry per
-  animation.
-- Use `""` when an animation does not need variable data.
-- Enter only the file name, without a path or `.json`.
-- The folder name must match: a config under `animData/MyMod` can use only files
-  under `varData/MyMod`.
-- DAF does not reset graph variables for entries without a variable file.
+Write only the file name, without `.json`. Folder names must match:
+`animData/MyMod` uses `varData/MyMod`.
 
-## Writing a variable file
+## Write a variable file
 
-A variable file is one JSON object. Each top-level key defines a value:
+Each key is either a helper or a graph variable to set:
 
 ```json
 {
@@ -105,90 +92,60 @@ A variable file is one JSON object. Each top-level key defines a value:
   },
 
   "bTakeCustomMirror": {
-    "value": false,
-    "type": 0
-  }
-}
-```
-
-Here:
-
-- `baseSpeed` is a helper because it has no `type`.
-- `II_AnimationSpeed` and `bTakeCustomMirror` are written to the graph because
-  they have `type`.
-- The top-level key is the exact graph variable name whenever `type` is present.
-
-An expanded definition supports exactly these fields:
-
-| Field | Required | Purpose |
-| --- | --- | --- |
-| `value` | Yes | Supplies the value to calculate. |
-| `type` | No | Writes this definition to the graph as Boolean (`0`), Integer (`1`), or Float (`2`). Without it, the definition is a helper. |
-| `conditions` | No | Lists `BGSPerk` records whose conditions decide whether `value` is used. |
-| `else` | No | Supplies a value when `conditions` do not pass. Defaults to `0`. |
-| `post` | No | Changes the calculated `value`. |
-
-A bare Boolean or number is shorthand for a helper:
-
-```json
-{
-  "enabled": true,
-  "speed": 1.5
-}
-```
-
-To write a literal to the graph, use `value` and `type`:
-
-```json
-{
-  "bEnabled": {
     "value": true,
     "type": 0
   }
 }
 ```
 
-## Where a value can come from
+- `baseSpeed` is a helper. DAF does not write it to the graph.
+- A definition with `type` is written to the graph. Its key must be the exact
+  graph variable name.
+- A definition may use only definitions written above it.
 
-`value` and `else` accept the same forms:
+An earlier definition is worked out again each time its name is used.
 
-| JSON | Meaning |
+These are all supported fields:
+
+| Field | Meaning |
 | --- | --- |
-| `true`, `false`, or a number | A literal value |
-| `"baseSpeed"` | The result of an earlier definition in the same file |
-| `"0x802~MyMod.esp"` | The current value of that `TESGlobal` |
-| `["II_AnimationSpeed", 2]` | The current value of a graph variable |
-| `[24]` or `[6, 88]` | The result of a vanilla condition function |
+| `value` | Value to use. Required. |
+| `type` | Graph type: `0` Boolean, `1` Integer, `2` Float. Without it, this is a helper. |
+| `conditions` | Perks whose conditions choose between `value` and `else`. |
+| `else` | Used when `conditions` fail. Default: `0`. |
+| `post` | Changes `value` after it is found. |
 
-A string in `0x...~Plugin` format must resolve to a `TESGlobal`. Any other
-string must name an earlier definition.
+A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 
-Provider arguments are literals only: finite numbers or plugin-qualified FormID
-strings. They cannot name helpers or graph variables, and a FormID string passes
-the Form itself rather than reading a `TESGlobal` value.
+## Choose a value
 
-Definitions may refer only to keys written above them in the same file. A
-forward reference, self-reference, or unknown name rejects the file. An unused
-helper is not calculated, and a helper is recalculated each time it is used.
+`value` and `else` accept:
 
-All calculations use float values. DAF converts only the final graph output:
+| Example | Uses |
+| --- | --- |
+| `true` or `1.5` | That exact value |
+| `"baseSpeed"` | An earlier definition |
+| `"0x802~MyMod.esp"` | A `TESGlobal` value |
+| `["II_AnimationSpeed", 2]` | A graph variable value |
+| `[24]` or `[6, 88]` | A condition-function result |
 
-- Boolean: `0` becomes `false`; any other finite value becomes `true`.
-- Integer: the value is range-checked and truncated toward zero.
-- Float: the value is written unchanged.
+A FormID string must use `0x...~Plugin` format. Any other string names an
+earlier definition.
 
-## Conditions and `else`
+DAF works with floats until it writes a graph variable. It then applies its
+declared `type`. At play time, an invalid result or an integer outside the
+signed 32-bit range skips the animation.
 
-Put the Creation Kit conditions in a `BGSPerk` record's top-level condition
-list, then add that perk's plugin-qualified FormID:
+## Use conditions and `else`
+
+Put your Creation Kit conditions in a `BGSPerk`'s top-level condition list,
+then add its FormID:
 
 ```json
 {
   "II_AnimationSpeed": {
     "value": 1.5,
-    "conditions": [
-      "0x800~MyMod.esp"
-    ],
+    "conditions": ["0x800~MyMod.esp"],
     "post": {
       "multiply": 2
     },
@@ -198,19 +155,15 @@ list, then add that perk's plugin-qualified FormID:
 }
 ```
 
-If the perk conditions pass, the result is `3`. If they fail, the result is
-`1`. `post` applies only to `value`, not to `else`.
+- If any listed perk passes, DAF uses `value`.
+- If none pass, DAF uses `else`. Its default is `0`.
+- With no `conditions`, or an empty list, DAF always uses `value`.
+- `post` changes only `value`, not `else`.
 
-When several perks are listed, the gate passes if any one of them passes. The
-conditions inside each perk retain their normal Creation Kit behavior. They are
-evaluated with the animation actor as Subject and the event reference, when one
-exists, as Target. Without `conditions`, or with an empty array, `value` is
-always used.
+Perk conditions receive the animation actor as Subject. They receive the event
+reference as Target when the event has one.
 
-If `else` is omitted, it defaults to `0`. It may also use an earlier definition,
-a `TESGlobal`, a graph read, or a condition-function provider.
-
-To post-process both outcomes, put the conditional choice in a helper:
+To apply `post` to both paths, make the choice in a helper:
 
 ```json
 {
@@ -230,9 +183,9 @@ To post-process both outcomes, put the conditional choice in a helper:
 }
 ```
 
-## Post-processing
+## Change a value with `post`
 
-`post` operations run from top to bottom in the order written:
+Operations run from top to bottom:
 
 | Operation | Example |
 | --- | --- |
@@ -244,34 +197,16 @@ To post-process both outcomes, put the conditional choice in a helper:
 | Clamp | `"clamp": [0, 1]` |
 | Arcsine | `"asin": true` |
 
-An arithmetic operand or either clamp limit may be a number or the name of an
-earlier definition:
+Numbers may be replaced with the name of an earlier definition. Clamp accepts
+two numbers or names.
 
-```json
-{
-  "source": 0.5,
-  "scale": 2,
-  "offset": -0.25,
+Division by zero gives `0`. `asin` accepts `-1` through `1` and returns radians.
+A reversed clamp or any operation that does not produce a valid number skips
+the animation.
 
-  "fResult": {
-    "value": "source",
-    "post": {
-      "multiply": "scale",
-      "add": "offset",
-      "clamp": [-1, 1]
-    },
-    "type": 2
-  }
-}
-```
+## Read a graph variable
 
-`asin` accepts inputs from `-1` to `1` and returns radians. Division by zero
-produces `0`. An unknown operation rejects the file. Invalid math at runtime
-skips the animation using that file and logs the reason.
-
-## Reading graph variables
-
-Use `[name, type]` to read the current value from the animation graph:
+Use `[name, type]`:
 
 ```json
 {
@@ -285,26 +220,20 @@ Use `[name, type]` to read the current value from the animation graph:
 }
 ```
 
-This reads the current float `II_AnimationSpeed`, divides it by two, and writes
-the result back. The read type uses the same `0`/`1`/`2` table as `type` and must
-match the graph variable.
+This reads the current float value, halves it, and writes it back.
 
-A plain string such as `"previousSpeed"` recalculates an earlier definition each
-time it is used. It does not read the graph. Use `["previousSpeed", 2]` only when
-`previousSpeed` is the name of a real graph variable.
+- `"name"` uses an earlier definition in the file.
+- `["name", type]` reads an existing graph variable.
+- Every graph read happens before this file writes any new values.
 
-Within one file, use a plain string to build on an earlier definition. A graph
-read sees the value already in the graph; DAF does not write any of the file's
-outputs until all of them have been calculated.
+Use the same type numbers as above. The type must match the graph variable.
 
-DAF does not reset values after an animation. A later animation can therefore
-read a graph variable that an earlier animation changed, unless the behavior or
-another mod changes it first.
+DAF does not reset graph variables after an animation. A later animation can
+read an earlier value if the behavior or another mod has not changed it.
 
-## Vanilla condition functions (advanced)
+## Use a condition function (advanced)
 
-A provider array uses the numeric result of a vanilla condition function. Its
-form is `[providerID, argument1, argument2]`:
+Use `[functionID, arguments...]` to get a vanilla condition-function result:
 
 ```json
 {
@@ -314,61 +243,54 @@ form is `[providerID, argument1, argument2]`:
 }
 ```
 
-The provider ID is the function index shown in the
+Find IDs in the
 [Creation Kit condition-function list](https://ck.uesp.net/wiki/Condition_Functions).
-Vanilla IDs occupy `0` through `735`. Higher IDs are reserved and unavailable
-in this build. A call is usable only if DAF supports that function's parameters
-and Skyrim exposes it as a condition function.
 
-DAF supplies the animation actor as Subject. Arguments are handled as follows:
+DAF always supplies the animation actor as Subject. Target is the event
+reference, when one exists.
 
-- If the function's first parameter is exactly `ObjectRef` and the event has a
-  Target, DAF supplies that Target automatically.
-- Otherwise, the first config argument supplies the function's first parameter.
-- After an automatic Target, the first config argument supplies the function's
-  second parameter.
-- Form and reference arguments use plugin-qualified FormID strings such as
-  `"0x14~Skyrim.esm"`. Numeric and enum arguments use JSON numbers.
-- Missing required arguments that DAF cannot supply, extra arguments, or
-  incompatible arguments reject the call.
+Arguments work like this:
 
-When an eligible Target exists, DAF always uses it; a config argument cannot
-replace it. Events whose item is not a reference have no Target.
+- If the first function parameter is exactly `ObjectRef` and Target exists,
+  DAF always uses Target. A config argument cannot replace it.
+- Config arguments fill the remaining function parameters in order.
+- DAF never supplies the second function parameter.
+- Forms and references use FormID strings. Numbers and enums use JSON numbers.
+- Arguments must be literal values. They cannot use helpers or graph reads.
+
+Inside this array, a FormID string passes the Form itself. It does not read a
+`TESGlobal` value. Missing, extra, or wrong arguments reject the call. Optional
+trailing parameters may be omitted.
 
 Examples:
 
-| Function | Source | Result or requirement |
+| Function | `value` | Meaning |
 | --- | --- | --- |
-| `GetScale()` | `[24]` | Scale of Subject |
-| `GetDistance(ObjectRef)` | `[1]` | Distance from Subject to Target; requires Target |
-| `GetPos(Axis)` | `[6, 88]` | Subject's X position; use `89` for Y or `90` for Z |
-| `GetWithinDistance(ObjectRef, Float)` | `[639, 256]` | Uses Target and a distance of 256; requires Target |
+| `GetScale()` | `[24]` | Subject's scale |
+| `GetDistance(ObjectRef)` | `[1]` | Distance to Target; requires Target |
+| `GetPos(Axis)` | `[6, 88]` | Subject's X position; `89` is Y, `90` is Z |
+| `GetWithinDistance(ObjectRef, Float)` | `[639, 256]` | Whether Target is within 256 units |
 
-Only functions available as Creation Kit conditions are eligible. Functions
-with more than two parameters are unsupported. DAF checks each call while
-loading the file; unsupported calls are rejected and the log explains why.
-Numeric parameters are currently supported only for `GetPos` (`6`) and
-`GetWithinDistance` (`639`); other numeric signatures are rejected. The
-`GetWithinDistance` distance must be finite, nonnegative, a whole number, and
-within the 32-bit unsigned range.
+Current limits:
 
-A provider that cannot produce a value at runtime skips the animation. It does
-not use `else`, because `else` is selected only when the definition's
-`conditions` do not pass.
+- Only vanilla IDs `0` through `735` are available.
+- Functions with more than two parameters are not supported.
+- Numeric parameters are supported only for `GetPos` (`6`) and
+  `GetWithinDistance` (`639`).
+- `GetWithinDistance` needs a whole, non-negative distance within the 32-bit
+  unsigned integer range.
 
-## Errors and runtime behavior
+If a condition function cannot return a value, DAF skips the animation. It does
+not use `else`; `else` is only for failed `conditions`.
 
-- A missing or invalid referenced variable file rejects its animation-data file.
-  Other animation-data files still load.
-- Before an animation, DAF calculates all graph outputs in its variable file.
-  Helpers are calculated only when an output refers to them.
-- Calculation or conversion failure makes no graph writes. Graph variables are
-  then set in file order; if a later setter fails, earlier changes remain even
-  though the animation is skipped.
-- A bad graph name or type, missing Target, failed provider, or invalid
-  calculation skips that animation and logs the reason. Later animations in the
-  queue still run.
-- DAF never resets graph variables automatically.
+## When something goes wrong
 
-Check the DAF log first when an animation is skipped or an animation-data file
-does not load.
+- If a named variable file is missing or invalid, its animation config does not
+  load.
+- DAF gets every graph variable value before writing. If that fails, nothing
+  changes and the animation is skipped.
+- DAF then writes in file order. If a later write fails, earlier changes remain.
+  The animation is still skipped.
+- The next queued animation still runs.
+
+Check the DAF log for the reason.
