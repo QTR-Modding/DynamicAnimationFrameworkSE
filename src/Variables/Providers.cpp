@@ -358,8 +358,8 @@ namespace Variables::Providers {
             }
 
             const auto layout = a_target && a_call.targetEligible
-                                     ? std::addressof(a_call.withTarget)
-                                     : std::addressof(a_call.withoutTarget);
+                                    ? std::addressof(a_call.withTarget)
+                                    : std::addressof(a_call.withoutTarget);
             if (!*layout) {
                 detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name,
                                            a_target && a_call.targetEligible

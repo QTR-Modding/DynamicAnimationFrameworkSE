@@ -15,6 +15,7 @@ namespace Presets {
         Field<std::string, rapidjson::Value> event_type_custom = {"events"};
 
         Field<std::vector<std::string>, rapidjson::Value> anim_names = {"animations"};
+        Field<std::vector<std::string>, rapidjson::Value> variables = {"variables"};
         Field<std::vector<int>, rapidjson::Value> durations = {"durations"};
 
         Field<std::vector<std::string>, rapidjson::Value> forms = {"forms"};

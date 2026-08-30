@@ -2,43 +2,25 @@
 #include "Variables/Compiler.h"
 
 namespace Variables {
-    bool AnimationMappingCompiler::Compile(const rapidjson::Value& a_document,
+    bool AnimationMappingCompiler::Compile(const std::vector<std::string>& a_variables,
                                            const std::filesystem::path& a_animationFile,
                                            const std::size_t a_animationCount, std::vector<CompiledGroupPtr>& a_groups,
                                            std::string& a_error) {
         a_error.clear();
         a_groups.clear();
-        if (!a_document.IsObject()) return true;
-
-        const rapidjson::Value* variables = nullptr;
-        for (auto it = a_document.MemberBegin(); it != a_document.MemberEnd(); ++it) {
-            if (std::string_view(it->name.GetString(), it->name.GetStringLength()) == "variables") {
-                if (variables) {
-                    a_error = "duplicate top-level variables field";
-                    return false;
-                }
-                variables = &it->value;
-            }
-        }
-        if (!variables) return true;
-
-        if (!variables->IsArray() || variables->Size() != a_animationCount) {
+        if (a_variables.empty()) return true;
+        if (a_variables.size() != a_animationCount) {
             a_error = "variables must be an array with exactly one entry per animation";
             return false;
         }
 
-        for (rapidjson::SizeType i = 0; i < variables->Size(); ++i) {
-            const auto& value = (*variables)[i];
-            if (value.IsNull()) continue;
-            if (!value.IsString()) {
-                a_error = "variables entries must be a bare group name or null";
-                return false;
-            }
+        for (std::size_t i = 0; i < a_variables.size(); ++i) {
+            const auto& groupName = a_variables[i];
+            if (groupName.empty()) continue;
             if (a_groups.empty()) {
                 a_groups.resize(a_animationCount);
             }
 
-            const std::string_view groupName(value.GetString(), value.GetStringLength());
             auto groupPath = ResolveGroupPath(a_animationFile, groupName, a_error).lexically_normal();
             if (groupPath.empty()) return false;
 

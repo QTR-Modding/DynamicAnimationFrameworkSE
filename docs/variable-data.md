@@ -24,7 +24,7 @@ An animation-data file may add a `variables` array parallel to `animations`:
 ```json
 {
   "animations": ["Take", "TakeLow", "TakeHigh"],
-  "variables": ["take", null, "takeHigh"]
+  "variables": ["take", "", "takeHigh"]
 }
 ```
 
@@ -39,17 +39,17 @@ Rules:
 - Omitting `variables` means that none of the animations uses variable data.
 - When present, `variables` must be an array with exactly as many entries as
   `animations`.
-- Each entry is a bare group name or `null`. `null` means no group for that
+- Each entry is a bare group name or an empty string. An empty string means no group for that
   animation.
 - A name contains no path and no `.json` extension. `take` in
   `animData/MyMod/interactions.json` resolves only to
   `varData/MyMod/take.json`.
-- Empty names, `.`, `..`, path separators, `:`, and names ending in `.json` are
+- `.`, `..`, path separators, `:`, and names ending in `.json` are
   rejected.
 - A missing or invalid referenced group rejects the whole animation-data file;
   unrelated animation-data files still load normally.
 
-Omitted or `null` variable data performs no graph writes or resets. Existing
+Omitted or empty variable data performs no graph writes or resets. Existing
 graph state remains unchanged.
 
 This maps an animation graph event to a variable group. It does not infer a

@@ -193,48 +193,32 @@ namespace {
         std::string error;
         int failures = 0;
 
-        auto document = Parse(R"json({"animations":["a","b"]})json");
         Check("mapping-omitted",
-              compiler.Compile(document, animationFile, 2, groups, error) && groups.empty(),
+              compiler.Compile({}, animationFile, 2, groups, error) && groups.empty(),
               failures);
-        document = Parse(R"json({"variables":[null,"valid"]})json");
-        Check("mapping-null-index-preservation",
-              compiler.Compile(document, animationFile, 2, groups, error) && groups.size() == 2 && !groups[0] &&
+        Check("mapping-empty-index-preservation",
+              compiler.Compile({"", "valid"}, animationFile, 2, groups, error) && groups.size() == 2 && !groups[0] &&
                   groups[1],
               failures);
         const auto cached = groups[1];
-        document = Parse(R"json({"variables":["valid"]})json");
-        Check("mapping-exact-length", !compiler.Compile(document, animationFile, 2, groups, error), failures);
-        document = Parse(R"json({"variables":["valid","valid","valid"]})json");
-        Check("mapping-overlong", !compiler.Compile(document, animationFile, 2, groups, error), failures);
-        document = Parse(R"json({"variables":{}})json");
-        Check("mapping-non-array", !compiler.Compile(document, animationFile, 1, groups, error), failures);
-        document = Parse(R"json({"variables":[null],"variables":[null]})json");
-        Check("mapping-duplicate-field", !compiler.Compile(document, animationFile, 1, groups, error), failures);
-        document = Parse(R"json({"variables":[1]})json");
-        Check("mapping-invalid-entry", !compiler.Compile(document, animationFile, 1, groups, error), failures);
-        document = Parse(R"json({"variables":["../valid"]})json");
-        Check("mapping-invalid-name", !compiler.Compile(document, animationFile, 1, groups, error), failures);
-        document = Parse(R"json({"variables":["missing"]})json");
-        Check("mapping-missing-group", !compiler.Compile(document, animationFile, 1, groups, error), failures);
-        document = Parse(R"json({"variables":["invalid"]})json");
-        Check("mapping-invalid-group", !compiler.Compile(document, animationFile, 1, groups, error), failures);
-        document = Parse(R"json({"variables":["valid"]})json");
+        Check("mapping-exact-length", !compiler.Compile({"valid"}, animationFile, 2, groups, error), failures);
+        Check("mapping-overlong",
+              !compiler.Compile({"valid", "valid", "valid"}, animationFile, 2, groups, error), failures);
+        Check("mapping-invalid-name", !compiler.Compile({"../valid"}, animationFile, 1, groups, error), failures);
+        Check("mapping-missing-group", !compiler.Compile({"missing"}, animationFile, 1, groups, error), failures);
+        Check("mapping-invalid-group", !compiler.Compile({"invalid"}, animationFile, 1, groups, error), failures);
         Check("mapping-wrong-animation-namespace",
-              !compiler.Compile(document, daf / "other" / "Example" / "animations.json", 1, groups, error), failures);
-        document = Parse(R"json({"variables":[null]})json");
+              !compiler.Compile({"valid"}, daf / "other" / "Example" / "animations.json", 1, groups, error), failures);
         Check("mapping-success-clears-failure-state",
-              compiler.Compile(document, animationFile, 1, groups, error) && error.empty() && groups.empty(),
+              compiler.Compile({""}, animationFile, 1, groups, error) && error.empty() && groups.empty(),
               failures);
-        document = Parse(R"json({"variables":["valid","valid"]})json");
         Check("mapping-valid-cache-reuse",
-              compiler.Compile(document, animationFile, 2, groups, error) && groups.size() == 2 &&
+              compiler.Compile({"valid", "valid"}, animationFile, 2, groups, error) && groups.size() == 2 &&
                   groups[0] == cached && groups[1] == cached,
               failures);
         Variables::AnimationMappingCompiler independentCompiler;
-        document = Parse(R"json({"variables":["valid"]})json");
         Check("mapping-cache-instance-isolation",
-              independentCompiler.Compile(document, animationFile, 1, groups, error) && groups.size() == 1 &&
+              independentCompiler.Compile({"valid"}, animationFile, 1, groups, error) && groups.size() == 1 &&
                   groups[0] && groups[0] != cached,
               failures);
         return failures;

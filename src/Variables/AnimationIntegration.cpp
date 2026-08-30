@@ -15,21 +15,21 @@ namespace Variables {
             if (!group) continue;
 
             a_animations[i].before_play = [group = std::move(group), targetHandle, targetExpected](
-                                        RE::Actor* a_subject, const Animation&) {
-                RE::TESObjectREFRPtr target;
-                if (targetExpected) {
-                    if (!targetHandle) {
-                        LogFailure(*group, {}, "target reference handle was invalid when the animation was queued");
-                        return false;
+                RE::Actor* a_subject, const Animation&) {
+                    RE::TESObjectREFRPtr target;
+                    if (targetExpected) {
+                        if (!targetHandle) {
+                            LogFailure(*group, {}, "target reference handle was invalid when the animation was queued");
+                            return false;
+                        }
+                        target = targetHandle.get();
+                        if (!target) {
+                            LogFailure(*group, {}, "target reference handle expired before the animation was played");
+                            return false;
+                        }
                     }
-                    target = targetHandle.get();
-                    if (!target) {
-                        LogFailure(*group, {}, "target reference handle expired before the animation was played");
-                        return false;
-                    }
-                }
-                return EvaluateAndWrite(*group, a_subject, target.get());
-            };
+                    return EvaluateAndWrite(*group, a_subject, target.get());
+                };
         }
     }
 }

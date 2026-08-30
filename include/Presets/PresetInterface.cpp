@@ -329,8 +329,8 @@ void Presets::Load() {
                 std::vector<Variables::CompiledGroupPtr> groups;
                 std::string variableError;
 
-                if (!variableMappingCompiler.Compile(doc, file.path(), data.anim_names.get().size(), groups,
-                                                     variableError)) {
+                if (!variableMappingCompiler.Compile(data.variables.get(), file.path(), data.anim_names.get().size(),
+                                                     groups, variableError)) {
                     logger::error("Failed to load preset variable mapping '{}': {}; skipping file",
                                   file.path().string(), variableError);
                     continue;
