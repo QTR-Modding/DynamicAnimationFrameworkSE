@@ -223,7 +223,7 @@ Use `[name, type]`:
 This reads the current float value, halves it, and writes it back.
 
 - `["name", type]` reads an existing graph variable.
-- Every graph read happens before this file writes any new values.
+- Every graph read happens before this file sets any graph variables.
 
 Use the same type numbers as above. The type must match the graph variable.
 
