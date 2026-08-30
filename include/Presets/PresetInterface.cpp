@@ -2,6 +2,8 @@
 #include "Service.h"
 #include "CLibUtilsQTR/PresetHelpers/PresetHelpersTXT.hpp"
 #include <rapidjson/error/en.h>
+#include "Variables/AnimationMapping.h"
+
 
 namespace {
     template <typename T>
@@ -140,7 +142,8 @@ namespace {
     }
 }
 
-bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
+bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
+                                std::vector<Variables::CompiledGroupPtr> a_variableGroups) {
     constexpr auto formtype_index_max = static_cast<int>(RE::FormType::Max);
     constexpr auto formtype_index_min = static_cast<int>(RE::FormType::None);
 
@@ -172,19 +175,24 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block) {
     priority = a_block.priority.get();
 
     const auto names = a_block.anim_names.get();
-    auto durations = a_block.durations.get();
+    const auto durations = a_block.durations.get();
+    if (!a_variableGroups.empty() && a_variableGroups.size() != names.size()) {
+        return false;
+    }
+    variables = std::move(a_variableGroups);
 
-    size_t i = 0;
+    std::size_t i = 0;
     for (const auto& name : names) {
         RE::TESIdleForm* a_idle = nullptr;
         //if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0){
         //    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
         //}
-        if (i < durations.size()) {
-            animations.emplace_back(a_idle, a_idle ? "" : name, durations[i]);
-        } else {
-            animations.emplace_back(a_idle, a_idle ? "" : name, 0);
-        }
+        const auto duration = i < durations.size() ? durations[i] : 0;
+        animations.push_back(Animation{
+            .a_idle = a_idle,
+            .anim_name = a_idle ? "" : name,
+            .t_wait_ms = static_cast<unsigned int>(duration)
+        });
         ++i;
     }
 
@@ -282,6 +290,7 @@ void Presets::Load() {
     }
 
     PresetHelpers::TXT_Helpers::GatherForms(std::string(formGroupsFolder));
+    Variables::AnimationMappingCompiler variableMappingCompiler;
 
     // loop folder for folders
     for (const auto& entry : std::filesystem::directory_iterator(animDataFolder)) {
@@ -318,14 +327,23 @@ void Presets::Load() {
                 AnimDataBlock data;
                 data.load(doc);
                 AnimData anim_data;
+                std::vector<Variables::CompiledGroupPtr> groups;
+                std::string variableError;
 
-                if (!anim_data.TryLoad(data)) {
+                if (!variableMappingCompiler.Compile(data.variables.get(), file.path(), data.anim_names.get().size(),
+                                                     groups, variableError)) {
+                    logger::error("Failed to load preset variable mapping '{}': {}; skipping file",
+                                  file.path().string(), variableError);
+                    continue;
+                }
+
+                if (!anim_data.TryLoad(data, std::move(groups))) {
                     logger::error("Failed to load preset; skipping file: {}", file.path().string());
                     continue;
                 }
 
-                for (std::unique_lock lock(m_anim_data_);
-                     auto a_event_type : anim_data.events) {
+                for (std::unique_lock lock(m_anim_data_); 
+                    auto a_event_type : anim_data.events) {
                     anim_map[a_event_type].push_back(anim_data);
                 }
             }

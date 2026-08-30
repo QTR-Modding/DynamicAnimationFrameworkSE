@@ -17,7 +17,7 @@ void OnMessage(SKSE::MessagingInterface::Message* message) { // NOLINT(misc-use-
 SKSEPluginLoad(const SKSE::LoadInterface *skse) {
     SetupLog();
     logger::info("Plugin loaded");
-    SKSE::Init(skse);
+    SKSE::Init(skse, false);
     SKSE::GetMessagingInterface()->RegisterListener(OnMessage);
 
     return true;

@@ -2,6 +2,7 @@
 #include "Hooks.h"
 #include "Utils.h"
 #include "Animator.h"
+#include "Variables/AnimationIntegration.h"
 
 namespace {
     // Credits: shad0wshayd3, https://next.nexusmods.com/profile/shad0wshayd3?gameId=1704
@@ -21,7 +22,7 @@ namespace {
 
     template <typename T>
     bool any_in_set(const std::unordered_set<T*>& s, const std::vector<T*>& v) {
-        for (auto* x : v) {
+        for (auto x : v) {
             if (s.contains(x)) return true;
         }
         return false;
@@ -57,10 +58,14 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
             return 0;
         }
 
-        if (const auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item})
-            ;
+        if (auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item});
             !anim_data.animations.empty()) {
-            if (PlayAnimation(actor, {a_info.event_id, anim_data.animations})) {
+            if (!anim_data.variables.empty()) {
+                Variables::PrepareAnimations(anim_data.animations, std::move(anim_data.variables),
+                                             a_info.a_item ? a_info.a_item->AsReference() : nullptr);
+            }
+
+            if (PlayAnimation(actor, {a_info.event_id, std::move(anim_data.animations)})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
                     if (const auto actor_id = actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
                         // ReSharper disable once CppTooWideScopeInitStatement

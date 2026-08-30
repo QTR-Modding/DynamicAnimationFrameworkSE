@@ -5,7 +5,7 @@
 #include "CLibUtilsQTR/FormReader.hpp"
 #include "CLibUtilsQTR/PresetHelpers/Config.hpp"
 #include "DynamicAnimationFramework/API.hpp"
-#include "Animator.h"
+#include "Variables/AnimationIntegration.h"
 
 
 namespace Presets {
@@ -15,6 +15,7 @@ namespace Presets {
         Field<std::string, rapidjson::Value> event_type_custom = {"events"};
 
         Field<std::vector<std::string>, rapidjson::Value> anim_names = {"animations"};
+        Field<std::vector<std::string>, rapidjson::Value> variables = {"variables"};
         Field<std::vector<int>, rapidjson::Value> durations = {"durations"};
 
         Field<std::vector<std::string>, rapidjson::Value> forms = {"forms"};
@@ -87,6 +88,7 @@ namespace Presets {
 
     struct AnimData {
         std::vector<Animation> animations;
+        std::vector<Variables::CompiledGroupPtr> variables;
 
         int priority;
         std::unordered_set<DAF_API::AnimEventID> events;
@@ -120,7 +122,8 @@ namespace Presets {
         int delay;
 
         AnimData() = default;
-        [[nodiscard]] bool TryLoad(AnimDataBlock& a_block);
+        [[nodiscard]] bool TryLoad(AnimDataBlock& a_block,
+                                   std::vector<Variables::CompiledGroupPtr> a_variableGroups);
     };
 
     inline std::shared_mutex m_anim_data_;
