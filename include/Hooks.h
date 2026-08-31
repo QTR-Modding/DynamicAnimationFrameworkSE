@@ -51,6 +51,12 @@ namespace Hooks {
         static inline REL::Relocation<decltype(thunk)> func;
     };
 
+    struct WndProcHook {
+        static LRESULT thunk(HWND a_window, UINT a_message, WPARAM a_wParam, LPARAM a_lParam);
+        static inline WNDPROC func;
+        static void Install();
+    };
+
     // Source: https://github.com/RavenKZP/Immersive-Weapon-Switch/blob/main/src/Hooks.cpp
     struct GenericEquipObjectHook {
         static void InstallHook(SKSE::Trampoline& a_trampoline);

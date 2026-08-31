@@ -20,6 +20,7 @@ namespace {
 using namespace Utils;
 
 void Hooks::Install() {
+
     MoveItemHooks<RE::PlayerCharacter>::install();
     MoveItemHooks<RE::TESObjectREFR>::install(false);
     MoveItemHooks<RE::Character>::install();
@@ -54,6 +55,8 @@ void Hooks::Install() {
 
     const REL::Relocation<std::uintptr_t> target2{REL::RelocationID(75461, 77246)}; // BSGraphics::Renderer::End
     DrawHook::func = trampoline.write_call<5>(target2.address() + 0x9, DrawHook::thunk);
+
+    WndProcHook::Install();
 
     ActivateHook<RE::TESObjectARMO>::install();
     ActivateHook<RE::TESObjectWEAP>::install();
@@ -109,6 +112,14 @@ void Hooks::DrawHook::thunk(std::uint32_t a_timer) {
     } else {
         Manager::GetSingleton()->ResumeAnimators();
     }
+}
+
+LRESULT Hooks::WndProcHook::thunk(HWND a_window, UINT a_message, WPARAM a_wParam, LPARAM a_lParam) {
+    if (a_message == WM_ACTIVATEAPP && !a_wParam) {
+        Manager::GetSingleton()->PauseAnimators();
+    }
+
+    return CallWindowProcA(func, a_window, a_message, a_wParam, a_lParam);
 }
 
 void Hooks::MagicEffectHooks::Install() {
@@ -456,6 +467,19 @@ int64_t Hooks::InventoryHoverHook::thunk(RE::InventoryEntryData* a1) {
         }
     }
     return originalFunction(a1);
+}
+
+void Hooks::WndProcHook::Install() {
+    if (const auto window = RE::BSGraphics::Renderer::GetCurrentRenderWindow()) {
+        func = reinterpret_cast<WNDPROC>(SetWindowLongPtrA(
+            reinterpret_cast<HWND>(window->hWnd), GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(thunk)));
+
+        if (!func) {
+            logger::error("Failed to install WndProc hook");
+        }
+    } else {
+        logger::error("Failed to get current render window for WndProc hook");
+    }
 }
 
 void Hooks::GenericEquipObjectHook::InstallHook(SKSE::Trampoline& a_trampoline) {
