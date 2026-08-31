@@ -21,6 +21,6 @@ bool MyAnimator::Add2Q(const std::pair<DAF_API::AnimEventID, std::vector<Animati
         m_AnimQueue.push({anim});
     }
 
-    Start();
+    StartIfReady();
     return true;
 }
