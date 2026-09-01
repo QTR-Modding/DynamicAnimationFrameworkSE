@@ -4,6 +4,13 @@
 
 namespace Variables {
     namespace {
+        bool ApproximatelyEqual(const float a_left, const float a_right) {
+            const auto left = static_cast<double>(a_left);
+            const auto right = static_cast<double>(a_right);
+            const auto scale = std::max({1.0, std::abs(left), std::abs(right)});
+            return std::abs(left - right) <= std::numeric_limits<float>::epsilon() * scale;
+        }
+
         struct PreparedOutput {
             std::string_view name;
             GraphType type;
@@ -101,11 +108,15 @@ namespace Variables {
                 } restore{.slot = currentDefinition, .value = previousDefinition};
                 bool gatePassed = definition.conditions.empty();
                 if (!gatePassed) {
-                    for (const auto perk : definition.conditions) {
-                        if (perk->perkConditions.IsTrue(subject, target)) {
-                            gatePassed = true;
-                            break;
+                    for (const auto& condition : definition.conditions) {
+                        if (const auto perk = std::get_if<RE::BGSPerk*>(&condition)) {
+                            gatePassed = (*perk)->perkConditions.IsTrue(subject, target);
+                        } else {
+                            float value;
+                            if (!Calculate(std::get<std::size_t>(condition), value)) return false;
+                            gatePassed = !ApproximatelyEqual(value, 0.0f);
                         }
+                        if (gatePassed) break;
                     }
                 }
                 if (!gatePassed) {
@@ -312,8 +323,7 @@ namespace Variables {
                     case PostOperationType::kNotEqual: {
                         const auto left = static_cast<double>(a_value);
                         const auto right = static_cast<double>(first);
-                        const auto scale = std::max({1.0, std::abs(left), std::abs(right)});
-                        const auto equal = std::abs(left - right) <= std::numeric_limits<float>::epsilon() * scale;
+                        const auto equal = ApproximatelyEqual(a_value, first);
                         switch (a_operation.type) {
                             case PostOperationType::kLessThan:
                                 a_value = left < right && !equal ? 1.0f : 0.0f;

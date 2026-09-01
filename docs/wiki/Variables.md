@@ -113,7 +113,7 @@ These are all supported fields:
 | --- | --- |
 | `value` | Value to use. Required in object form. |
 | `type` | Graph type: `0` Boolean, `1` Integer, `2` Float. Without it, this is a helper. |
-| `conditions` | Perks whose conditions choose between `value` and `else`. |
+| `conditions` | Earlier definitions or Perks that choose between `value` and `else`. |
 | `else` | Used when `conditions` fail. Default: `0`. |
 | `post` | Changes `value` after it is found. |
 
@@ -166,14 +166,20 @@ calculated or written, DAF skips the animation.
 
 ## Use conditions and `else`
 
-Create a Perk record in the Creation Kit, put your conditions in its top-level
-condition list, then add the Perk's Form identifier:
+Each condition can be an earlier definition or a Perk Form identifier:
 
 ```json
 {
+  "enabled": {
+    "value": "0x801~MyMod.esp",
+    "post": {
+      "gt": 0
+    }
+  },
+
   "II_AnimationSpeed": {
     "value": 1.5,
-    "conditions": ["0x800~MyMod.esp"],
+    "conditions": ["enabled", "0x800~MyMod.esp"],
     "post": {
       "multiply": 2
     },
@@ -183,13 +189,16 @@ condition list, then add the Perk's Form identifier:
 }
 ```
 
-- If any listed perk passes, DAF uses `value`.
+- If any listed definition is nonzero or any listed Perk passes, DAF uses
+  `value`. Values approximately equal to zero are false.
 - If none pass, DAF uses `else`. Its default is `0`.
 - With no `conditions`, or an empty list, DAF always uses `value`.
 - `post` changes only `value`, not `else`.
 
-Perk conditions receive the animation actor as Subject. They receive the event
-reference as Target when the event has one.
+Referenced definitions are calculated on demand and must be written earlier in
+the same file. If one cannot be calculated, DAF skips the animation. Perk
+conditions receive the animation actor as Subject and the event reference as
+Target when the event has one.
 
 To apply `post` to both paths, make the choice in a helper:
 
