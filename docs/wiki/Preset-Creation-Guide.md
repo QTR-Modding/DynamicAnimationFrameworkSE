@@ -57,6 +57,7 @@ No arrays of multiple definitions. Just plain key/value pairs.
 | `priority` | No; default `0` | `integer` | No | No | Lower numbers win when multiple presets match |
 | `events` | Yes | `integer[]` or `string` | No | No | Uses built-in event numbers `1–28` or one custom event name |
 | `animations` | Yes | `string[]` | No | No | Animation events played in order |
+| `variables` | No | `string[]` | No | No | Maps each animation to an [animation graph variable file](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Animation-Graph-Variables) by matching array position |
 | `durations` | No | `integer[]` | No | No | Sets each animation's duration in milliseconds by matching array position |
 | `forms` | No | `string[]` | Yes | Yes | Uses IDs to filter the Form supplied by the event |
 | `form_types` | No | `integer[]` or `string[]` | Names only | No | Filters by numeric or named Form types; do not mix both types |

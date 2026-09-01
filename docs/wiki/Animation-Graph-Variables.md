@@ -93,11 +93,11 @@ condition functions, graph reads, and `post`. The result is rounded to the neare
 
 An omitted duration, an empty definition name, or no variable file mapped to
 that animation uses `0`. A missing definition in a mapped file rejects the config.
-If an existing definition cannot be calculated or is outside the supported
-millisecond range, that animation is skipped.
+If an existing definition cannot be calculated, is negative, or is too large,
+that animation is skipped.
 
-`delay: true` totals only static durations. Use a numeric `delay` when durations
-are calculated at play time.
+`delay: true` can total only durations written directly as numbers. If any
+duration is calculated from a variable file, set `delay` to a number instead.
 
 ## Write a variable file
 
@@ -149,22 +149,22 @@ A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 | --- | --- |
 | `true` or `1.5` | That exact value |
 | `"baseSpeed"` | An earlier definition |
-| `"0x802~MyMod.esp"` | A `TESGlobal` value |
+| `"0x802~MyMod.esp"` | A Global value |
 | `["II_AnimationSpeed", 2]` | A graph variable value |
 | `[24]` | `GetScale()` result; see [condition functions](#use-a-condition-function-advanced) |
 
 A string matching an earlier definition uses that definition. Otherwise, DAF
 resolves it as a [plugin-local ID, full FormID, or EditorID](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Preset-Creation-Guide#5-ids-very-important).
-Here it must resolve to a `TESGlobal`.
+Here it must resolve to a Global (`TESGlobal`).
 
-DAF works with floats until it writes a graph variable. It then applies its
-declared `type`. At play time, an invalid result or an integer outside the
-signed 32-bit range skips the animation.
+DAF calculates every value as a number. When it writes a graph variable, `type`
+decides whether it writes a Boolean, Integer, or Float. If the result cannot be
+calculated or written, DAF skips the animation.
 
 ## Use conditions and `else`
 
-Put your Creation Kit conditions in a `BGSPerk`'s top-level condition list,
-then add its Form identifier:
+Create a Perk record in the Creation Kit, put your conditions in its top-level
+condition list, then add the Perk's Form identifier:
 
 ```json
 {
@@ -253,9 +253,9 @@ zero before use. `2` rounds `12.3456` to `12.35`, `0` rounds it to `12`, and
 higher. `atan2` calculates `atan2(current, operand)`, where the current value is
 Y and the operand is X. `atan2(0, 0)` gives `0`.
 
-Comparisons return `1` or `0` and automatically account for floating-point
-precision. Values considered equal are excluded by `lt` and `gt`, and included
-by `le` and `ge`.
+Comparisons return `1` or `0`. DAF automatically treats tiny rounding
+differences as equal. Equal values are excluded by `lt` and `gt`, and included by
+`le` and `ge`.
 
 Division by zero gives `0`. `log` is the natural logarithm and requires a
 positive value. Trigonometric operations use radians. `asin` and `acos` accept
@@ -301,7 +301,7 @@ Use `[functionID, arguments...]` to get a condition-function result:
 ```
 
 The first number is the function ID. Find Skyrim function IDs in CommonLib's
-[`RE::FUNCTION_DATA::FunctionID` enum](https://github.com/QTR-Modding/CommonLibVR-MIT/blob/4190ec291f99c64b765c0647e25cf8a3a3d9a550/include/RE/T/TESCondition.h#L33).
+[FunctionID list](https://github.com/QTR-Modding/CommonLibVR-MIT/blob/4190ec291f99c64b765c0647e25cf8a3a3d9a550/include/RE/T/TESCondition.h#L33).
 For example, `kGetScale = 24`. The
 [Creation Kit list](https://ck.uesp.net/wiki/Condition_Functions) explains what
 each function does and which parameters it takes.
@@ -310,20 +310,26 @@ each function does and which parameters it takes.
 lists community function IDs. Its range is `1000` through `9999`.
 
 DAF always supplies the animation actor as Subject. Target is the event
-reference, when one exists.
+reference, such as the item being picked up, when the event supplies one.
 
 Arguments work like this:
 
-- If the first function parameter is exactly `ObjectRef` and Target exists,
-  DAF always uses Target. A config argument cannot replace it.
-- Config arguments fill the remaining function parameters in order.
-- DAF never supplies the second function parameter.
-- Forms and references use Form identifier strings. Numbers and enums use JSON numbers.
-- Arguments must be literal values. They cannot use helpers or graph reads.
+- If a Skyrim function's first argument is listed as `ObjectRef`, DAF uses Target
+  automatically when Target exists. Do not include that argument in the array.
+- If the event has no Target and the function requires that argument, provide
+  the Form or reference yourself.
+- Community functions receive Target in each argument registered as `Target`.
+- Write the remaining arguments after the function ID, in the order documented
+  for that function.
+- Write Forms and references using
+  [Form identifier strings](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Preset-Creation-Guide#5-ids-very-important).
+- Write numeric arguments and numbered choices such as Axis as JSON numbers.
+- Write arguments directly. Helpers and graph reads cannot be used here.
 
-Inside this array, a Form identifier string passes the Form itself. It does not
-read a `TESGlobal` value. Missing, extra, or wrong arguments reject the call.
-Optional trailing parameters may be omitted.
+Inside a condition-function array, a Form identifier passes the Form itself. It
+does not read a Global's value. Missing, extra, or incompatible arguments make
+the calculation fail, so DAF skips the animation. If a function marks its final
+arguments as optional, you may leave them out.
 
 Examples:
 
@@ -332,19 +338,27 @@ Examples:
 | `GetScale()` | `[24]` | Subject's scale |
 | `GetDistance(ObjectRef)` | `[1]` | Distance to Target; requires Target |
 | `GetPos(Axis)` | `[6, 88]` | Subject's X position; `89` is Y, `90` is Z |
+| `GetStageDone(Quest, Stage)` | `[59, "MyQuestEditorID", 20]` | Whether stage 20 is done |
 | `GetWithinDistance(ObjectRef, Float)` | `[639, 256]` | Whether Target is within 256 units |
 | `WouldBeStealing(ObjectRef)` | `[1000]` | Whether taking Target would be stealing |
 
-Current limits:
+Supported functions and arguments:
 
-- Skyrim IDs `0` through `735` and registered CommunityFunctionsSE IDs
-  `1000` through `9999` are available.
+- Skyrim function IDs are `0` through `735`. Registered CommunityFunctionsSE IDs
+  are `1000` through `9999`.
 - IDs `736` through `999` are reserved.
-- Functions with more than two parameters are not supported.
-- Numeric parameters are supported only for `GetPos` (`6`) and
-  `GetWithinDistance` (`639`).
-- `GetWithinDistance` needs a whole, non-negative distance within the 32-bit
-  unsigned integer range.
+- DAF can use a function only when Skyrim or CommunityFunctionsSE exposes it as a
+  condition and its arguments are supported below.
+- Functions that list more than two arguments are not supported. Subject is
+  separate and does not count.
+- Arguments other than Forms, references, and numbers are not supported.
+- Skyrim whole-number arguments and numbered choices such as Axis cannot use
+  decimals. For example, write `88`, not `88.5`.
+- `GetWithinDistance` is the only supported Skyrim function with a `Float`
+  argument. Its distance must still be a whole number of `0` or more.
+- Community integer arguments must be whole numbers. Community float arguments
+  may use decimals.
+- DAF rejects numbers that are too large for the function to use.
 
 If a condition function cannot return a value, DAF skips the animation. It does
 not use `else`; `else` is only for failed `conditions`.

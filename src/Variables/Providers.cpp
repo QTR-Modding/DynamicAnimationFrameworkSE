@@ -4,7 +4,6 @@
 
 namespace Variables::Providers {
     namespace detail {
-        constexpr std::uint32_t kGetPosID = 6;
         constexpr std::uint32_t kGetWithinDistanceID = 639;
 
         enum class SlotCodec : std::uint8_t {
@@ -12,7 +11,6 @@ namespace Variables::Providers {
             kFormPointer,
             kInteger,
             kFloat,
-            kAxisDirect,
             kUnsignedDirectToFloat,
             kUnsupported
         };
@@ -35,8 +33,8 @@ namespace Variables::Providers {
             if (a_typeInfo.kind == ParamKind::kForm) {
                 return SlotCodec::kFormPointer;
             }
-            if (a_providerID == kGetPosID && a_parameterIndex == 0 && a_typeInfo.type == RE::SCRIPT_PARAM_TYPE::kAxis) {
-                return SlotCodec::kAxisDirect;
+            if (a_typeInfo.kind == ParamKind::kInt) {
+                return SlotCodec::kInteger;
             }
             if (a_providerID == kGetWithinDistanceID && a_parameterIndex == 1 &&
                 a_typeInfo.type == RE::SCRIPT_PARAM_TYPE::kFloat) {
@@ -264,13 +262,6 @@ namespace Variables::Providers {
                         return false;
                     }
                     a_slot = static_cast<float>(*number);
-                    return true;
-                case SlotCodec::kAxisDirect:
-                    if (*number != 88.0 && *number != 89.0 && *number != 90.0) {
-                        a_error = prefix + "must be an exact Axis value: X=88, Y=89, or Z=90";
-                        return false;
-                    }
-                    a_slot = static_cast<std::uintptr_t>(static_cast<std::uint32_t>(*number));
                     return true;
                 case SlotCodec::kUnsignedDirectToFloat:
                     if (*number < 0.0 || std::trunc(*number) != *number ||
