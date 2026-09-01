@@ -8,8 +8,8 @@ variable setter failure is expected: the typed definition names exist only to
 make DAF calculate every root and are not real animation graph variables.
 
 The fixture covers every Skyrim condition function from IDs 0-735 whose
-parameters DAF supports, plus CommunityFunctionsSE ID 1000. These Skyrim
-functions require parameter payloads that DAF intentionally does not support:
+parameters DAF supports and can be supplied from Skyrim.esm, plus
+CommunityFunctionsSE ID 1000. DAF intentionally does not support these functions:
 
 - 53 `GetScriptVariable`
 - 79 `GetQuestVariable`
@@ -19,8 +19,11 @@ functions require parameter payloads that DAF intentionally does not support:
 - 447 `GetGraphVariableFloat`
 - 576 `GetEventData`
 - 611 `IsNullPackageData`
+- 612 `GetNumericPackageData`
 - 629 `GetVMQuestVariable`
 - 630 `GetVMScriptVariable`
 - 675 `GetGraphVariableInt`
+
+ID 381, `GetHasNote`, is omitted because Skyrim.esm contains no `NOTE` records to supply its required argument.
 
 ID 726, `DoesNotExist`, is an unused command-table sentinel rather than a callable condition function.
