@@ -1,4 +1,4 @@
-# Animation graph variables
+# Variables
 
 DAF can set animation graph variables immediately before an animation plays.
 
