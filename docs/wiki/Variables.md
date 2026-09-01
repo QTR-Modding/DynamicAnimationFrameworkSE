@@ -1,10 +1,12 @@
 # Variables
 
-DAF can set animation graph variables immediately before an animation plays.
+DAF variable files can calculate helpers and animation durations, read existing
+animation graph variables, and set graph variables immediately before an
+animation plays.
 
-The animation event and graph variables must already exist in your behavior
-files. Their names and types must match. Restart Skyrim after editing DAF
-configs.
+The animation event and any graph variable DAF reads or sets must already exist
+in your behavior files. Their names and types must match. Restart Skyrim after
+editing DAF configs.
 
 ## Quick start
 
@@ -75,6 +77,48 @@ trailing entries use no variable file. Use `""` to skip an earlier animation.
 Write only the file name, without `.json`. Folder names must match:
 `animData/MyMod` uses `varData/MyMod`.
 
+## Graph variables and helpers
+
+`take.json` can contain both helpers and graph variables to set:
+
+```json
+{
+  "baseSpeed": 1.5,
+  "durationMs": 3200,
+
+  "II_AnimationSpeed": {
+    "value": "baseSpeed",
+    "type": 2
+  },
+
+  "bTakeCustomMirror": {
+    "value": true,
+    "type": 0
+  }
+}
+```
+
+- `baseSpeed` and `durationMs` are helpers. DAF does not write them to the graph.
+- A definition with `type` is written to the graph. Its key must be the exact
+  graph variable name.
+- A definition may use only definitions written above it.
+
+DAF starts with graph variables and named durations. It calculates referenced
+helpers recursively and ignores unused helpers. A helper is recalculated every
+time it is used.
+
+These are all supported fields:
+
+| Field | Meaning |
+| --- | --- |
+| `value` | Value to use. Required in object form. |
+| `type` | Graph type: `0` Boolean, `1` Integer, `2` Float. Without it, this is a helper. |
+| `conditions` | Perks whose conditions choose between `value` and `else`. |
+| `else` | Used when `conditions` fail. Default: `0`. |
+| `post` | Changes `value` after it is found. |
+
+A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
+
 ## Calculate a duration
 
 `durations` accepts static milliseconds and definition names together:
@@ -87,9 +131,10 @@ Write only the file name, without `.json`. Folder names must match:
 }
 ```
 
-`durationMs` is evaluated from `take.json` immediately before `Take` plays.
-It can use everything described below, including conditions, globals,
-condition functions, graph reads, and `post`. The result is rounded to the nearest millisecond.
+`durationMs` is the helper defined in `take.json` above. It is evaluated
+immediately before `Take` plays. It can use everything described below,
+including conditions, globals, condition functions, graph reads, and `post`.
+The result is rounded to the nearest millisecond.
 
 An omitted duration, an empty definition name, or no variable file mapped to
 that animation uses `0`. A missing definition in a mapped file rejects the config.
@@ -98,48 +143,6 @@ that animation is skipped.
 
 `delay: true` can total only durations written directly as numbers. If any
 duration is calculated from a variable file, set `delay` to a number instead.
-
-## Write a variable file
-
-Each key is either a helper or a graph variable to set:
-
-```json
-{
-  "baseSpeed": 1.5,
-
-  "II_AnimationSpeed": {
-    "value": "baseSpeed",
-    "post": {
-      "multiply": 2
-    },
-    "type": 2
-  },
-
-  "bTakeCustomMirror": {
-    "value": true,
-    "type": 0
-  }
-}
-```
-
-- `baseSpeed` is a helper. DAF does not write it to the graph.
-- A definition with `type` is written to the graph. Its key must be the exact
-  graph variable name.
-- A definition may use only definitions written above it.
-
-A helper is recalculated every time it is used.
-
-These are all supported fields:
-
-| Field | Meaning |
-| --- | --- |
-| `value` | Value to use. Required. |
-| `type` | Graph type: `0` Boolean, `1` Integer, `2` Float. Without it, this is a helper. |
-| `conditions` | Perks whose conditions choose between `value` and `else`. |
-| `else` | Used when `conditions` fail. Default: `0`. |
-| `post` | Changes `value` after it is found. |
-
-A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 
 ## Choose a value
 
@@ -150,7 +153,7 @@ A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 | `true` or `1.5` | That exact value |
 | `"baseSpeed"` | An earlier definition |
 | `"0x802~MyMod.esp"` | A Global value |
-| `["II_AnimationSpeed", 2]` | A graph variable value |
+| `["II_AnimationSpeed", 2]` | An [animation graph variable value](#read-a-graph-variable) |
 | `[24]` | `GetScale()` result; see [condition functions](#use-a-condition-function-advanced) |
 
 A string matching an earlier definition uses that definition. Otherwise, DAF
@@ -234,7 +237,7 @@ Operations run from top to bottom:
 | Arcsine | `"asin": true` |
 | Arccosine | `"acos": true` |
 | Arctangent | `"atan": true` |
-| Two-argument arctangent | `"atan2": "xValue"` |
+| Two-argument arctangent | `"atan2": 1` |
 | Less than | `"lt": 1` |
 | Less than or equal | `"le": 1` |
 | Greater than | `"gt": 1` |
@@ -367,8 +370,8 @@ not use `else`; `else` is only for failed `conditions`.
 
 - If a named variable file is missing or invalid, its animation config does not
   load.
-- DAF gets every graph variable value before writing. If that fails, nothing
-  changes and the animation is skipped.
+- DAF calculates a named duration and every graph variable value before writing.
+  If a calculation fails, nothing changes and the animation is skipped.
 - DAF then writes in file order. If a later write fails, earlier changes remain.
   The animation is still skipped.
 - The next queued animation still runs.
