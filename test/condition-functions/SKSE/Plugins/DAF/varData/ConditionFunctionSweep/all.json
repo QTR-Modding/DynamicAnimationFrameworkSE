@@ -58,7 +58,6 @@
   "f106_IsFacingUp": {"value":[106],"type":0},
   "f107_GetKnockedState": {"value":[107],"type":0},
   "f108_GetWeaponAnimType": {"value":[108],"type":0},
-  "f109_IsWeaponSkillType": {"value":[109,6],"type":0},
   "f110_GetCurrentAIPackage": {"value":[110],"type":0},
   "f111_IsWaiting": {"value":[111],"type":0},
   "f112_IsIdlePlaying": {"value":[112],"type":0},
