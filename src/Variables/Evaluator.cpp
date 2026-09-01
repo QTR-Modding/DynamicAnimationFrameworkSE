@@ -48,9 +48,13 @@ namespace Variables {
                         return Fail("root definition has no output type", definition.name);
                     }
                     float value;
-                    if (!Calculate(index, value) || !Prepare(definition, value, prepared)) {
+                    if (!Calculate(index, value)) {
                         return false;
                     }
+#ifndef NDEBUG
+                    logger::trace("{} [{}] = {}", group.context, definition.name, value);
+#endif
+                    if (!Prepare(definition, value, prepared)) return false;
                 }
                 for (const auto& output : prepared) {
                     const RE::BSFixedString name(output.name);

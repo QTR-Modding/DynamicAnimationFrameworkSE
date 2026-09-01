@@ -1,0 +1,9 @@
+{
+  "events": [5],
+  "animations": ["IdleForceDefaultState"],
+  "variables": ["all"],
+  "durations": [1000],
+  "forms": ["0xF~Skyrim.esm"],
+  "actors": ["0x14~Skyrim.esm"],
+  "delay": 5000
+}
