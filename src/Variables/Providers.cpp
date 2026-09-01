@@ -177,6 +177,22 @@ namespace Variables::Providers {
                 return std::nullopt;
             }
             const std::string_view name = function->functionName ? function->functionName : "";
+            switch (static_cast<RE::FUNCTION_DATA::FunctionID>(a_providerID)) {
+                case RE::FUNCTION_DATA::FunctionID::kEPAlchemyGetMakingPoison:
+                case RE::FUNCTION_DATA::FunctionID::kEPAlchemyEffectHasKeyword:
+                case RE::FUNCTION_DATA::FunctionID::kEPTemperingItemIsEnchanted:
+                case RE::FUNCTION_DATA::FunctionID::kEPTemperingItemHasKeyword:
+                case RE::FUNCTION_DATA::FunctionID::kEPModSkillUsage_IsAdvanceSkill:
+                case RE::FUNCTION_DATA::FunctionID::kEPModSkillUsage_AdvanceObjectHasKeyword:
+                case RE::FUNCTION_DATA::FunctionID::kEPModSkillUsage_IsAdvanceAction:
+                case RE::FUNCTION_DATA::FunctionID::kEPMagic_SpellHasKeyword:
+                case RE::FUNCTION_DATA::FunctionID::kEPMagic_SpellHasSkill:
+                    a_error = ProviderPrefix(a_providerID, name) +
+                              ": requires perk-entry-point context that DAF cannot supply";
+                    return std::nullopt;
+                default:
+                    break;
+            }
             if (!function->conditionFunction) {
                 a_error = ProviderPrefix(a_providerID, name) + ": no condition callback is available";
                 return std::nullopt;

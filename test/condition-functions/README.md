@@ -29,4 +29,6 @@ ID 109, `IsWeaponSkillType`, is omitted because DAF supplies an actor as Subject
 
 ID 381, `GetHasNote`, is omitted because Skyrim.esm contains no `NOTE` records to supply its required argument.
 
+The perk-entry-point functions 500, 501, 659, 660, 681, 691, 692, 693, and 696 are rejected. Their callbacks depend on hidden context from an active perk-entry-point evaluation, which DAF cannot supply. Calling them as ordinary condition functions can crash Skyrim.
+
 ID 726, `DoesNotExist`, is an unused command-table sentinel rather than a callable condition function.
