@@ -315,6 +315,10 @@ lists community function IDs. Its range is `1000` through `9999`.
 DAF always supplies the animation actor as Subject. Target is the event
 reference, such as the item being picked up, when the event supplies one.
 
+Events that remove their reference, such as item pickup, can lose Target before
+the animation runs. If a condition function needs it, use a numeric `delay` in
+the animation config.
+
 Arguments work like this:
 
 - If a Skyrim function's first argument is listed as `ObjectRef`, DAF uses Target
