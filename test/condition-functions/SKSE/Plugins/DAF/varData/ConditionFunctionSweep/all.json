@@ -269,8 +269,6 @@
   "f568_IsSprinting": {"value":[568],"type":0},
   "f569_IsBlocking": {"value":[569],"type":0},
   "f570_HasEquippedSpell": {"value":[570,0],"type":0},
-  "f571_GetCurrentCastingType": {"value":[571,0],"type":0},
-  "f572_GetCurrentDeliveryType": {"value":[572,0],"type":0},
   "f574_GetAttackState": {"value":[574],"type":0},
   "f577_IsCloserToAThanB": {"value":[577,"0x14~Skyrim.esm"],"type":0},
   "f579_GetEquippedShout": {"value":[579,"0x13E07~Skyrim.esm"],"type":0},

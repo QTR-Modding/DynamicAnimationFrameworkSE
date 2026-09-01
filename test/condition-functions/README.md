@@ -28,4 +28,6 @@ ID 109, `IsWeaponSkillType`, is omitted because DAF supplies an actor as Subject
 
 ID 381, `GetHasNote`, is omitted because Skyrim.esm contains no `NOTE` records to supply its required argument.
 
+IDs 571-572, `GetCurrentCastingType` and `GetCurrentDeliveryType`, are omitted because the pickup fixture does not establish a current spell in the selected casting source.
+
 ID 726, `DoesNotExist`, is an unused command-table sentinel rather than a callable condition function.
