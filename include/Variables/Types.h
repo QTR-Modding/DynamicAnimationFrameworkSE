@@ -17,6 +17,7 @@ namespace Variables {
     using ValueSource =
     std::variant<float, std::size_t, GraphRead, RE::TESGlobal*, std::shared_ptr<const Providers::ProviderCall>>;
     using Operand = std::variant<float, std::size_t>;
+    using Condition = std::variant<std::size_t, RE::BGSPerk*>;
 
     enum class PostOperationType : std::uint8_t {
         kAdd,
@@ -58,7 +59,7 @@ namespace Variables {
         std::string name;
         ValueSource value;
         std::optional<ValueSource> else_val;
-        std::vector<RE::BGSPerk*> conditions;
+        std::vector<Condition> conditions;
         std::vector<PostOp> post;
         std::optional<GraphType> output_type;
     };

@@ -172,21 +172,29 @@ namespace Variables {
             return true;
         }
 
-        bool CompileConditions(const rapidjson::Value& a_value, std::vector<RE::BGSPerk*>& a_result,
-                               std::string& a_error, const std::string_view a_context) {
+        bool CompileConditions(const rapidjson::Value& a_value, const DefinitionMap& a_definitions,
+                               std::vector<Condition>& a_result, std::string& a_error,
+                               const std::string_view a_context) {
             if (!a_value.IsArray()) {
                 return Fail(a_error, a_context, "conditions must be an array");
             }
             for (const auto& entry : a_value.GetArray()) {
                 if (!entry.IsString()) {
-                    return Fail(a_error, a_context, "each condition must be a BGSPerk Form identifier");
+                    return Fail(a_error, a_context,
+                                "each condition must be an earlier variable name or BGSPerk Form identifier");
                 }
-                const auto form = FormReader::GetFormFromString(entry.GetString());
+                const std::string value = entry.GetString();
+                if (const auto definition = a_definitions.find(value); definition != a_definitions.end()) {
+                    a_result.emplace_back(definition->second);
+                    continue;
+                }
+                const auto form = FormReader::GetFormFromString(value);
                 auto perk = form ? form->As<RE::BGSPerk>() : nullptr;
                 if (!perk) {
-                    return Fail(a_error, a_context, "condition Form identifier did not resolve to BGSPerk");
+                    return Fail(a_error, a_context,
+                                "condition did not resolve to an earlier variable or BGSPerk");
                 }
-                a_result.push_back(perk);
+                a_result.emplace_back(perk);
             }
             return true;
         }
@@ -344,7 +352,8 @@ namespace Variables {
                 a_result.else_val = std::move(compiledFallback);
             }
             if (conditions &&
-                !CompileConditions(*conditions, a_result.conditions, a_error, definitionContext + ".conditions")) {
+                !CompileConditions(*conditions, a_definitions, a_result.conditions, a_error,
+                                   definitionContext + ".conditions")) {
                 return false;
             }
             if (post && !CompilePost(*post, a_definitions, a_result.post, a_error, definitionContext + ".post")) {
