@@ -62,6 +62,7 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
             !anim_data.animations.empty()) {
             if (!anim_data.variables.empty()) {
                 Variables::PrepareAnimations(anim_data.animations, std::move(anim_data.variables),
+                                             anim_data.duration_indices,
                                              a_info.a_item ? a_info.a_item->AsReference() : nullptr);
             }
 

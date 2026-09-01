@@ -24,8 +24,19 @@ namespace Variables {
                   holder(a_subject ? static_cast<RE::IAnimationGraphManagerHolder*>(a_subject) : nullptr) {
             }
 
-            bool Run() {
+            bool Run(const std::optional<std::size_t> a_durationIndex, unsigned int& a_duration) {
                 if (!subject || !holder) return Fail("animation graph subject is unavailable");
+                if (a_durationIndex) {
+                    float duration;
+                    if (!Calculate(*a_durationIndex, duration)) return false;
+                    const auto durationValue = std::round(static_cast<double>(duration));
+                    if (duration < 0.0f ||
+                        durationValue > static_cast<double>(std::numeric_limits<unsigned int>::max())) {
+                        return Fail("duration is outside the supported millisecond range",
+                                    group.definitions[*a_durationIndex].name);
+                    }
+                    a_duration = static_cast<unsigned int>(durationValue);
+                }
                 std::vector<PreparedOutput> prepared;
                 prepared.reserve(group.graph_variable_indices.size());
                 for (const auto index : group.graph_variable_indices) {
@@ -269,10 +280,11 @@ namespace Variables {
     }
 
     bool EvaluateAndWrite(const CompiledGroup& a_group, RE::TESObjectREFR* a_subject,
-                          RE::TESObjectREFR* a_target) noexcept {
+                          RE::TESObjectREFR* a_target, const std::optional<std::size_t> a_durationIndex,
+                          unsigned int& a_duration) noexcept {
         try {
             Evaluation evaluation(a_group, a_subject, a_target);
-            if (evaluation.Run()) return true;
+            if (evaluation.Run(a_durationIndex, a_duration)) return true;
             const auto& failure = evaluation.Failure();
             LogFailure(a_group, failure ? failure->definition : std::string_view{},
                        failure ? failure->reason : "unknown evaluation failure");
