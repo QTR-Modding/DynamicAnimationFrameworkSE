@@ -314,11 +314,13 @@ reference, when one exists.
 
 Arguments work like this:
 
-- If the first function parameter is exactly `ObjectRef` and Target exists,
-  DAF always uses Target. A config argument cannot replace it.
+- For Skyrim functions, if the first parameter is exactly `ObjectRef` and
+  Target exists, DAF always uses Target. A config argument cannot replace it.
+- Community functions receive Target in each parameter registered as `Target`.
 - Config arguments fill the remaining function parameters in order.
-- DAF never supplies the second function parameter.
-- Forms and references use Form identifier strings. Numbers and enums use JSON numbers.
+- Forms and references use
+  [Form identifier strings](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Preset-Creation-Guide#5-ids-very-important).
+  Numbers and enums use JSON numbers.
 - Arguments must be literal values. They cannot use helpers or graph reads.
 
 Inside this array, a Form identifier string passes the Form itself. It does not
@@ -341,10 +343,12 @@ Current limits:
   `1000` through `9999` are available.
 - IDs `736` through `999` are reserved.
 - Functions with more than two parameters are not supported.
-- Numeric parameters are supported only for `GetPos` (`6`) and
-  `GetWithinDistance` (`639`).
-- `GetWithinDistance` needs a whole, non-negative distance within the 32-bit
-  unsigned integer range.
+- Skyrim integer and enum parameters require whole values in the signed 32-bit
+  range.
+- Skyrim `Float` parameters are supported only for `GetWithinDistance`, which
+  needs a whole, non-negative value within the unsigned 32-bit range.
+- Community integer parameters use the signed 32-bit range. Community float
+  parameters use the finite float range.
 
 If a condition function cannot return a value, DAF skips the animation. It does
 not use `else`; `else` is only for failed `conditions`.
