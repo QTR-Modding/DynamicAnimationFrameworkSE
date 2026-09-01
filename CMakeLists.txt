@@ -50,6 +50,7 @@ get_target_property(COMMONLIB_SRC_DIR CommonLibSSE SOURCE_DIR)
 find_path(CLIB_UTIL_INCLUDE_DIRS "ClibUtil/utils.hpp")
 find_path(CLIB_UTILS_QTR_INCLUDE_DIRS "ClibUtilsQTR/utils.hpp")
 find_path(DAF_API_INCLUDE_DIRS "DynamicAnimationFramework/API.hpp")
+find_path(COMMUNITY_FUNCTIONS_SE_INCLUDE_DIRS "CommunityFunctionsSE/API.hpp")
 
 file(
   GLOB_RECURSE
@@ -86,6 +87,7 @@ target_include_directories(
 	${CLIB_UTIL_INCLUDE_DIRS}
 	${CLIB_UTILS_QTR_INCLUDE_DIRS}
     ${DAF_API_INCLUDE_DIRS}
+	${COMMUNITY_FUNCTIONS_SE_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 

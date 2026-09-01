@@ -13,7 +13,8 @@
     "clib-utils-qtr",
     "directxtk",
     "boost-pfr",
-    "daf-api"
+    "daf-api",
+    "community-functions-se"
   ],
   "overrides": [
     {

@@ -257,7 +257,7 @@ read an earlier value if the behavior or another mod has not changed it.
 
 ## Use a condition function (advanced)
 
-Use `[functionID, arguments...]` to get a vanilla condition-function result:
+Use `[functionID, arguments...]` to get a condition-function result:
 
 ```json
 {
@@ -267,11 +267,14 @@ Use `[functionID, arguments...]` to get a vanilla condition-function result:
 }
 ```
 
-The first number is the function ID. Find it in CommonLib's
+The first number is the function ID. Find Skyrim function IDs in CommonLib's
 [`RE::FUNCTION_DATA::FunctionID` enum](https://github.com/QTR-Modding/CommonLibVR-MIT/blob/4190ec291f99c64b765c0647e25cf8a3a3d9a550/include/RE/T/TESCondition.h#L33).
 For example, `kGetScale = 24`. The
 [Creation Kit list](https://ck.uesp.net/wiki/Condition_Functions) explains what
 each function does and which parameters it takes.
+
+[CommunityFunctionsSE](https://github.com/QTR-Modding/CommunityFunctionsSE)
+lists community function IDs. Its range is `1000` through `9999`.
 
 DAF always supplies the animation actor as Subject. Target is the event
 reference, when one exists.
@@ -297,10 +300,13 @@ Examples:
 | `GetDistance(ObjectRef)` | `[1]` | Distance to Target; requires Target |
 | `GetPos(Axis)` | `[6, 88]` | Subject's X position; `89` is Y, `90` is Z |
 | `GetWithinDistance(ObjectRef, Float)` | `[639, 256]` | Whether Target is within 256 units |
+| `WouldBeStealing(ObjectRef)` | `[1000]` | Whether taking Target would be stealing |
 
 Current limits:
 
-- Only vanilla IDs `0` through `735` are available.
+- Skyrim IDs `0` through `735` and registered CommunityFunctionsSE IDs
+  `1000` through `9999` are available.
+- IDs `736` through `999` are reserved.
 - Functions with more than two parameters are not supported.
 - Numeric parameters are supported only for `GetPos` (`6`) and
   `GetWithinDistance` (`639`).

@@ -1,5 +1,6 @@
 #include "Variables/Providers.h"
 #include "ProviderParameters.h"
+#include "CommunityFunctionsSE/API.hpp"
 
 namespace Variables::Providers {
     namespace detail {
@@ -105,10 +106,18 @@ namespace Variables::Providers {
             return true;
         }
 
-        const RE::SCRIPT_FUNCTION* ResolveVanillaFunction(const std::uint32_t a_providerID, std::string& a_error) {
+        const RE::SCRIPT_FUNCTION* ResolveFunction(const std::uint32_t a_providerID, std::string& a_error) {
+            if (a_providerID >= CommunityFunctionsSE::kFunctionBase &&
+                a_providerID < CommunityFunctionsSE::kFunctionLimit) {
+                const auto function = CommunityFunctionsSE::GetFunction(a_providerID);
+                if (!function) {
+                    a_error = "provider " + std::to_string(a_providerID) + ": community function is unavailable";
+                }
+                return function;
+            }
             if (a_providerID >= RE::SCRIPT_FUNCTION::Commands::kScriptCommandsEnd) {
                 a_error = "provider " + std::to_string(a_providerID) +
-                          ": IDs 736 and above are reserved and unavailable in this build";
+                          ": provider ID is reserved";
                 return nullptr;
             }
             const auto table = RE::SCRIPT_FUNCTION::GetFirstScriptCommand();
@@ -130,8 +139,8 @@ namespace Variables::Providers {
         }
 
         std::optional<ProviderDescriptor>
-        ResolveVanillaProvider(const std::uint32_t a_providerID, std::string& a_error) {
-            const auto function = ResolveVanillaFunction(a_providerID, a_error);
+        ResolveProvider(const std::uint32_t a_providerID, std::string& a_error) {
+            const auto function = ResolveFunction(a_providerID, a_error);
             if (!function) {
                 return std::nullopt;
             }
@@ -303,7 +312,7 @@ namespace Variables::Providers {
                                                     std::string& a_error) {
         a_error.clear();
         try {
-            const auto provider = detail::ResolveVanillaProvider(a_providerID, a_error);
+            const auto provider = detail::ResolveProvider(a_providerID, a_error);
             if (!provider) {
                 return {};
             }
@@ -348,7 +357,7 @@ namespace Variables::Providers {
                 detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name, "Subject is missing");
                 return false;
             }
-            const auto function = detail::ResolveVanillaFunction(a_call.provider.id, a_error);
+            const auto function = detail::ResolveFunction(a_call.provider.id, a_error);
             if (!function || !function->conditionFunction) {
                 if (function) {
                     detail::SetEvaluationError(a_error, a_call.provider.id, a_call.provider.name,
