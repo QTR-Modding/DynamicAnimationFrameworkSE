@@ -13,6 +13,7 @@ functions require parameter payloads that DAF intentionally does not support:
 
 - 53 `GetScriptVariable`
 - 79 `GetQuestVariable`
+- 98 `GetPlayerControlsDisabled`
 - 325 `GetWithinPackageLocation`
 - 407 `GetVATSValue`
 - 447 `GetGraphVariableFloat`

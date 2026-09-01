@@ -51,7 +51,6 @@
   "f081_IsRotating": {"value":[81],"type":0},
   "f084_GetDeadCount": {"value":[84,"0xEB4~Skyrim.esm"],"type":0},
   "f091_GetIsAlerted": {"value":[91],"type":0},
-  "f098_GetPlayerControlsDisabled": {"value":[98,0,0],"type":0},
   "f099_GetHeadingAngle": {"value":[99],"type":0},
   "f101_IsWeaponMagicOut": {"value":[101],"type":0},
   "f102_IsTorchOut": {"value":[102],"type":0},
