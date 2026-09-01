@@ -299,6 +299,45 @@ namespace Variables {
             return true;
         }
 
+        bool CompileInterpolation(const rapidjson::Value& a_value, const DefinitionMap& a_definitions,
+                                  Interpolation& a_result, std::string& a_error,
+                                  const std::string_view a_context) {
+            if (!a_value.IsObject()) {
+                return CompileSource(a_value, a_definitions, a_result.target, a_error, a_context);
+            }
+
+            const rapidjson::Value* target = nullptr;
+            std::unordered_set<std::string> seen;
+            for (auto it = a_value.MemberBegin(); it != a_value.MemberEnd(); ++it) {
+                const std::string field = it->name.GetString();
+                if (!seen.insert(field).second) {
+                    return Fail(a_error, std::string(a_context) + '.' + field, "duplicate interpolation field");
+                }
+                if (field == "target") {
+                    target = &it->value;
+                } else if (field == "mode") {
+                    if (!it->value.IsString()) {
+                        return Fail(a_error, std::string(a_context) + ".mode", "mode must be 'linear' or 'step'");
+                    }
+                    const std::string_view mode = it->value.GetString();
+                    if (mode == "linear") {
+                        a_result.mode = InterpolationMode::kLinear;
+                    } else if (mode == "step") {
+                        a_result.mode = InterpolationMode::kStep;
+                    } else {
+                        return Fail(a_error, std::string(a_context) + ".mode", "unknown interpolation mode");
+                    }
+                } else {
+                    return Fail(a_error, std::string(a_context) + '.' + field, "unknown interpolation field");
+                }
+            }
+            if (!target) {
+                return Fail(a_error, a_context, "interpolation object requires 'target'");
+            }
+            return CompileSource(*target, a_definitions, a_result.target, a_error,
+                                 std::string(a_context) + ".target");
+        }
+
         bool CompileDefinition(const std::string_view a_name, const rapidjson::Value& a_value,
                                const DefinitionMap& a_definitions, Definition& a_result, std::string& a_error,
                                const std::string_view a_context) {
@@ -316,6 +355,7 @@ namespace Variables {
             const rapidjson::Value* conditions = nullptr;
             const rapidjson::Value* post = nullptr;
             const rapidjson::Value* type = nullptr;
+            const rapidjson::Value* interpolate = nullptr;
             std::unordered_set<std::string> seen;
             for (auto it = a_value.MemberBegin(); it != a_value.MemberEnd(); ++it) {
                 const std::string field = it->name.GetString();
@@ -332,6 +372,8 @@ namespace Variables {
                     post = &it->value;
                 } else if (field == "type") {
                     type = &it->value;
+                } else if (field == "interpolate") {
+                    interpolate = &it->value;
                 } else if (field == "set") {
                     return Fail(a_error, definitionContext, "field 'set' was removed; use 'type' to mark an output");
                 } else {
@@ -365,6 +407,23 @@ namespace Variables {
                     return false;
                 }
                 a_result.output_type = graphType;
+            }
+            if (interpolate) {
+                if (!a_result.output_type) {
+                    return Fail(a_error, definitionContext + ".interpolate",
+                                "interpolation requires a graph output type");
+                }
+                Interpolation compiled;
+                if (!CompileInterpolation(*interpolate, a_definitions, compiled, a_error,
+                                          definitionContext + ".interpolate")) {
+                    return false;
+                }
+                if (compiled.mode == InterpolationMode::kLinear &&
+                    *a_result.output_type != GraphType::kFloat) {
+                    return Fail(a_error, definitionContext + ".interpolate",
+                                "linear interpolation requires graph type 2");
+                }
+                a_result.interpolation = std::move(compiled);
             }
             return true;
         }

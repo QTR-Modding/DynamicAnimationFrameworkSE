@@ -2,7 +2,7 @@
 
 DAF variable files can calculate helpers and animation durations, read existing
 animation graph variables, and set graph variables immediately before an
-animation plays.
+animation plays or while it is playing.
 
 The animation event and any graph variable DAF reads or sets must already exist
 in your behavior files. Their names and types must match. Restart Skyrim after
@@ -116,6 +116,7 @@ These are all supported fields:
 | `conditions` | Earlier definitions or Perks that choose between `value` and `else`. |
 | `else` | Used when `conditions` fail. Default: `0`. |
 | `post` | Changes `value` after it is found. |
+| `interpolate` | Moves this graph variable from `value` to a target during the animation. |
 
 A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 
@@ -143,6 +144,38 @@ that animation is skipped.
 
 `delay: true` can total only durations written directly as numbers. If any
 duration is calculated from a variable file, set `delay` to a number instead.
+
+## Interpolate a graph variable
+
+`value` is written immediately. `interpolate` is the target reached over that
+animation's duration:
+
+```json
+{
+  "II_AnimationSpinePitch": {
+    "value": 0,
+    "interpolate": "pitchDegrees",
+    "type": 2
+  }
+}
+```
+
+This shorthand uses linear interpolation. Its target accepts the same values as
+[`value`](#choose-a-value). Use the object form to choose a mode:
+
+```json
+"interpolate": {
+  "mode": "step",
+  "target": true
+}
+```
+
+- `linear` continuously changes a float graph variable and requires `type: 2`.
+- `step` keeps the initial value, then writes the target at the end. It supports
+  Boolean, Integer, and Float graph variables.
+- A duration of `0` writes the target immediately.
+- A later DAF write to the same graph variable replaces its active interpolation.
+- Pausing the game or switching away from it also pauses interpolation.
 
 ## Choose a value
 

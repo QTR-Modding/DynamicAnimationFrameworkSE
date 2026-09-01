@@ -9,4 +9,7 @@ namespace Variables {
                                         RE::TESObjectREFR* a_target,
                                         std::optional<std::size_t> a_durationIndex,
                                         unsigned int& a_duration) noexcept;
+
+    void PauseInterpolations() noexcept;
+    void UpdateInterpolations(float a_deltaTime) noexcept;
 }
