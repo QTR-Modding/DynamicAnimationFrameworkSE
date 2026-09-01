@@ -7,7 +7,15 @@ namespace Variables::Providers {
         constexpr std::uint32_t kGetPosID = 6;
         constexpr std::uint32_t kGetWithinDistanceID = 639;
 
-        enum class SlotCodec : std::uint8_t { kFormPointer, kAxisDirect, kUnsignedDirectToFloat, kUnsupported };
+        enum class SlotCodec : std::uint8_t {
+            kTarget,
+            kFormPointer,
+            kInteger,
+            kFloat,
+            kAxisDirect,
+            kUnsignedDirectToFloat,
+            kUnsupported
+        };
 
         struct ParameterDescriptor {
             RE::SCRIPT_PARAM_TYPE type{RE::SCRIPT_PARAM_TYPE::kChar};
@@ -69,9 +77,35 @@ namespace Variables::Providers {
             }
         }
 
-        bool NormalizeParameters(ProviderDescriptor& a_descriptor, std::string& a_error) {
+        bool NormalizeParameters(
+            ProviderDescriptor& a_descriptor,
+            const std::optional<std::array<CommunityFunctionsSE::ConditionParameter, 2>>& a_communityParameters,
+            std::string& a_error) {
             for (std::size_t i = 0; i < a_descriptor.numParams; ++i) {
                 auto& parameter = a_descriptor.params[i];
+                if (a_communityParameters) {
+                    switch ((*a_communityParameters)[i]) {
+                        case CommunityFunctionsSE::ConditionParameter::kTarget:
+                            parameter.codec = SlotCodec::kTarget;
+                            break;
+                        case CommunityFunctionsSE::ConditionParameter::kForm:
+                        case CommunityFunctionsSE::ConditionParameter::kReference:
+                            parameter.codec = SlotCodec::kFormPointer;
+                            break;
+                        case CommunityFunctionsSE::ConditionParameter::kInteger:
+                            parameter.codec = SlotCodec::kInteger;
+                            break;
+                        case CommunityFunctionsSE::ConditionParameter::kFloat:
+                            parameter.codec = SlotCodec::kFloat;
+                            break;
+                        default:
+                            a_error = ProviderPrefix(a_descriptor.id, a_descriptor.name) + ": parameter " +
+                                      std::to_string(i) + " has no community binding metadata";
+                            return false;
+                    }
+                    continue;
+                }
+
                 const auto typeInfo = GetParamTypeInfo(parameter.type);
                 if (!typeInfo) {
                     a_error = ProviderPrefix(a_descriptor.id, a_descriptor.name) + ": parameter " + std::to_string(i) +
@@ -159,6 +193,7 @@ namespace Variables::Providers {
                 return std::nullopt;
             }
 
+            const auto communityParameters = CommunityFunctionsSE::GetConditionParameters(a_providerID);
             ProviderDescriptor descriptor{
                 .id = a_providerID, .name = std::string(name), .numParams = function->numParams};
             for (std::size_t i = 0; i < descriptor.numParams; ++i) {
@@ -166,7 +201,7 @@ namespace Variables::Providers {
                 descriptor.params[i].optional = function->params[i].optional;
             }
 
-            if (!NormalizeParameters(descriptor, a_error)) {
+            if (!NormalizeParameters(descriptor, communityParameters, a_error)) {
                 return std::nullopt;
             }
             return descriptor;
@@ -175,7 +210,8 @@ namespace Variables::Providers {
         struct TargetSlot {
         };
 
-        using CompiledSlot = std::variant<std::monostate, TargetSlot, RE::TESForm*, std::uintptr_t>;
+        using CompiledSlot =
+            std::variant<std::monostate, TargetSlot, RE::TESForm*, std::int32_t, float, std::uintptr_t>;
         using BindingLayout = std::array<CompiledSlot, 2>;
 
         bool CompileArgument(const ProviderDescriptor& a_provider, const std::size_t a_parameterIndex,
@@ -212,6 +248,23 @@ namespace Variables::Providers {
             }
 
             switch (parameter.codec) {
+                case SlotCodec::kInteger:
+                    if (std::trunc(*number) != *number ||
+                        *number < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
+                        *number > static_cast<double>(std::numeric_limits<std::int32_t>::max())) {
+                        a_error = prefix + "must be an integral value in the int32 range";
+                        return false;
+                    }
+                    a_slot = static_cast<std::int32_t>(*number);
+                    return true;
+                case SlotCodec::kFloat:
+                    if (*number < static_cast<double>(std::numeric_limits<float>::lowest()) ||
+                        *number > static_cast<double>(std::numeric_limits<float>::max())) {
+                        a_error = prefix + "must be in the finite float range";
+                        return false;
+                    }
+                    a_slot = static_cast<float>(*number);
+                    return true;
                 case SlotCodec::kAxisDirect:
                     if (*number != 88.0 && *number != 89.0 && *number != 90.0) {
                         a_error = prefix + "must be an exact Axis value: X=88, Y=89, or Z=90";
@@ -238,34 +291,29 @@ namespace Variables::Providers {
                                                    const bool a_insertTarget,
                                                    std::string& a_error) {
             BindingLayout layout;
-            std::size_t firstLiteralParameter = 0;
-            if (a_insertTarget) {
-                layout[0] = TargetSlot{};
-                firstLiteralParameter = 1;
+            std::size_t argumentIndex = 0;
+            for (std::size_t parameterIndex = 0; parameterIndex < a_provider.numParams; ++parameterIndex) {
+                const auto& parameter = a_provider.params[parameterIndex];
+                if (parameter.codec == SlotCodec::kTarget || (a_insertTarget && parameterIndex == 0)) {
+                    layout[parameterIndex] = TargetSlot{};
+                    continue;
+                }
+                if (argumentIndex < a_arguments.size()) {
+                    if (!CompileArgument(a_provider, parameterIndex, argumentIndex, a_arguments[argumentIndex],
+                                         layout[parameterIndex], a_error)) {
+                        return std::nullopt;
+                    }
+                    ++argumentIndex;
+                } else if (!parameter.optional) {
+                    a_error = "missing required parameter " + std::to_string(parameterIndex) + " (" +
+                              GetParamTypeName(parameter.type) + ")";
+                    return std::nullopt;
+                }
             }
-
-            const auto availableLiteralParameters =
-                static_cast<std::size_t>(a_provider.numParams) - firstLiteralParameter;
-            if (a_arguments.size() > availableLiteralParameters) {
+            if (argumentIndex != a_arguments.size()) {
                 a_error = "received " + std::to_string(a_arguments.size()) +
-                          " author arguments but this binding accepts at most " +
-                          std::to_string(availableLiteralParameters);
+                          " author arguments but this binding accepts at most " + std::to_string(argumentIndex);
                 return std::nullopt;
-            }
-
-            for (std::size_t i = 0; i < a_arguments.size(); ++i) {
-                const auto parameterIndex = firstLiteralParameter + i;
-                if (!CompileArgument(a_provider, parameterIndex, i, a_arguments[i], layout[parameterIndex], a_error)) {
-                    return std::nullopt;
-                }
-            }
-
-            for (std::size_t i = firstLiteralParameter + a_arguments.size(); i < a_provider.numParams; ++i) {
-                if (!a_provider.params[i].optional) {
-                    a_error = "missing required parameter " + std::to_string(i) + " (" +
-                              GetParamTypeName(a_provider.params[i].type) + ")";
-                    return std::nullopt;
-                }
             }
 
             return layout;
@@ -276,7 +324,7 @@ namespace Variables::Providers {
                              std::string& a_error) {
             a_result = nullptr;
             if (std::holds_alternative<TargetSlot>(a_slot)) {
-                if (!a_target) {
+                if (!a_target && !a_provider.params[a_parameterIndex].optional) {
                     SetEvaluationError(a_error, a_provider.id, a_provider.name, "Target is unavailable");
                     return false;
                 }
@@ -291,6 +339,14 @@ namespace Variables::Providers {
                                        " has an incompatible runtime type");
                     return false;
                 }
+                return true;
+            }
+            if (const auto integer = std::get_if<std::int32_t>(std::addressof(a_slot))) {
+                a_result = CommunityFunctionsSE::EncodeParameter(*integer);
+                return true;
+            }
+            if (const auto number = std::get_if<float>(std::addressof(a_slot))) {
+                a_result = CommunityFunctionsSE::EncodeParameter(*number);
                 return true;
             }
             if (const auto number = std::get_if<std::uintptr_t>(std::addressof(a_slot))) {
@@ -318,6 +374,27 @@ namespace Variables::Providers {
             }
 
             ProviderCall call{.provider = std::move(*provider)};
+            if (call.provider.id >= CommunityFunctionsSE::kFunctionBase &&
+                call.provider.id < CommunityFunctionsSE::kFunctionLimit) {
+                for (std::size_t i = 0; i < call.provider.numParams; ++i) {
+                    if (call.provider.params[i].codec == detail::SlotCodec::kTarget) {
+                        call.targetEligible = true;
+                        break;
+                    }
+                }
+
+                std::string layoutError;
+                call.withoutTarget = detail::CompileLayout(call.provider, a_arguments, false, layoutError);
+                if (!call.withoutTarget) {
+                    a_error = detail::ProviderPrefix(call.provider.id, call.provider.name) + ": " + layoutError;
+                    return {};
+                }
+                if (call.targetEligible) {
+                    call.withTarget = call.withoutTarget;
+                }
+                return std::make_shared<const ProviderCall>(std::move(call));
+            }
+
             call.targetEligible =
                 call.provider.numParams != 0 && call.provider.params[0].type == RE::SCRIPT_PARAM_TYPE::kObjectRef;
 
