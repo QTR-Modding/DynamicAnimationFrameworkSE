@@ -1,7 +1,8 @@
 # Condition-function sweep
 
-Build DAF in Debug, install this directory as an MO2 mod, and pick up one loose
-Gold001 reference. The five-second delay keeps Target alive during evaluation.
+Build DAF in Debug, install this directory as an MO2 mod, equip a spell in the
+left hand, and pick up one loose Gold001 reference. The five-second delay keeps
+Target alive during evaluation.
 
 The DAF log contains one trace line per calculated function. The final graph
 variable setter failure is expected: the typed definition names exist only to
@@ -27,7 +28,5 @@ CommunityFunctionsSE ID 1000. DAF intentionally does not support these functions
 ID 109, `IsWeaponSkillType`, is omitted because DAF supplies an actor as Subject, while the function requires a weapon Subject.
 
 ID 381, `GetHasNote`, is omitted because Skyrim.esm contains no `NOTE` records to supply its required argument.
-
-IDs 571-572, `GetCurrentCastingType` and `GetCurrentDeliveryType`, are omitted because the pickup fixture does not establish a current spell in the selected casting source.
 
 ID 726, `DoesNotExist`, is an unused command-table sentinel rather than a callable condition function.
