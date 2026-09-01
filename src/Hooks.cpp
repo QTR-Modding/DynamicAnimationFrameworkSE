@@ -1,6 +1,7 @@
 #include "Hooks.h"
 #include "Manager.h"
 #include "Utils.h"
+#include "Variables/Evaluator.h"
 
 namespace {
     class HarvestEventSink final : public RE::BSTEventSink<RE::TESHarvestedEvent::ItemHarvested> {
@@ -109,14 +110,17 @@ void Hooks::DrawHook::thunk(std::uint32_t a_timer) {
 
     if (IsGameFrozen() || !IsGameWindowInFocus()) {
         Manager::GetSingleton()->PauseAnimators();
+        Variables::PauseInterpolations();
     } else {
         Manager::GetSingleton()->ResumeAnimators();
+        Variables::UpdateInterpolations(RE::GetSecondsSinceLastFrame());
     }
 }
 
 LRESULT Hooks::WndProcHook::thunk(HWND a_window, UINT a_message, WPARAM a_wParam, LPARAM a_lParam) {
     if (a_message == WM_ACTIVATEAPP && !a_wParam) {
         Manager::GetSingleton()->PauseAnimators();
+        Variables::PauseInterpolations();
     }
 
     return CallWindowProcA(func, a_window, a_message, a_wParam, a_lParam);

@@ -19,6 +19,16 @@ namespace Variables {
     using Operand = std::variant<float, std::size_t>;
     using Condition = std::variant<std::size_t, RE::BGSPerk*>;
 
+    enum class InterpolationMode : std::uint8_t {
+        kLinear,
+        kStep,
+    };
+
+    struct Interpolation {
+        InterpolationMode mode{InterpolationMode::kLinear};
+        ValueSource target;
+    };
+
     enum class PostOperationType : std::uint8_t {
         kAdd,
         kSubtract,
@@ -62,6 +72,7 @@ namespace Variables {
         std::vector<Condition> conditions;
         std::vector<PostOp> post;
         std::optional<GraphType> output_type;
+        std::optional<Interpolation> interpolation;
     };
 
     struct CompiledGroup {

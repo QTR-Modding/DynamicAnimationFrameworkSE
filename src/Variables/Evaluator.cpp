@@ -4,6 +4,8 @@
 
 namespace Variables {
     namespace {
+        using GraphValue = std::variant<bool, std::int32_t, float>;
+
         bool ApproximatelyEqual(const float a_left, const float a_right) {
             const auto left = static_cast<double>(a_left);
             const auto right = static_cast<double>(a_right);
@@ -11,11 +13,62 @@ namespace Variables {
             return std::abs(left - right) <= std::numeric_limits<float>::epsilon() * scale;
         }
 
+        struct PreparedInterpolation {
+            InterpolationMode mode;
+            GraphValue target;
+        };
+
         struct PreparedOutput {
             std::string_view name;
-            GraphType type;
-            std::variant<bool, std::int32_t, float> value;
+            GraphValue value;
+            std::optional<PreparedInterpolation> interpolation;
         };
+
+        struct ActiveInterpolation {
+            RE::ObjectRefHandle subject;
+            RE::BSFixedString name;
+            InterpolationMode mode;
+            GraphValue initial;
+            GraphValue target;
+            std::chrono::duration<float> elapsed{};
+            std::chrono::duration<float> duration;
+        };
+
+        std::vector<ActiveInterpolation> activeInterpolations;
+        bool interpolationsPaused = false;
+
+        bool SetGraphVariable(RE::IAnimationGraphManagerHolder* a_holder, const RE::BSFixedString& a_name,
+                              const GraphValue& a_value) {
+            return std::visit(
+                [a_holder, &a_name]<typename T>(const T a_typedValue) {
+                    if constexpr (std::is_same_v<T, bool>) {
+                        return a_holder->SetGraphVariableBool(a_name, a_typedValue);
+                    } else if constexpr (std::is_same_v<T, std::int32_t>) {
+                        return a_holder->SetGraphVariableInt(a_name, a_typedValue);
+                    } else {
+                        return a_holder->SetGraphVariableFloat(a_name, a_typedValue);
+                    }
+                },
+                a_value);
+        }
+
+        void CancelInterpolation(const RE::ObjectRefHandle& a_subject, const RE::BSFixedString& a_name) {
+            std::erase_if(activeInterpolations, [&](const ActiveInterpolation& a_interpolation) {
+                return a_interpolation.subject == a_subject && a_interpolation.name == a_name;
+            });
+        }
+
+        void StartInterpolation(const RE::ObjectRefHandle& a_subject, const RE::BSFixedString& a_name,
+                                const PreparedOutput& a_output, const unsigned int a_duration) {
+            activeInterpolations.push_back(ActiveInterpolation{
+                .subject = a_subject,
+                .name = a_name,
+                .mode = a_output.interpolation->mode,
+                .initial = a_output.value,
+                .target = a_output.interpolation->target,
+                .duration = std::chrono::duration_cast<std::chrono::duration<float>>(
+                    std::chrono::milliseconds(a_duration))});
+        }
 
         struct EvaluationFailure {
             std::string definition;
@@ -61,24 +114,41 @@ namespace Variables {
 #ifndef NDEBUG
                     logger::trace("{} [{}] = {}", group.context, definition.name, value);
 #endif
-                    if (!Prepare(definition, value, prepared)) return false;
+                    std::optional<float> targetValue;
+                    if (definition.interpolation) {
+                        currentDefinition = definition.name;
+                        float interpolationTarget;
+                        if (!EvaluateSource(definition.interpolation->target, interpolationTarget)) return false;
+                        if (!std::isfinite(interpolationTarget)) return Fail("interpolation target is not finite");
+                        targetValue = interpolationTarget;
+                        currentDefinition = {};
+                    }
+                    if (!Prepare(definition, value, targetValue, prepared)) return false;
+                }
+
+                const auto subjectHandle = subject->GetHandle();
+                if (!subjectHandle &&
+                    std::ranges::any_of(prepared, [a_duration](const PreparedOutput& a_output) {
+                        return a_duration > 0 && a_output.interpolation.has_value();
+                    })) {
+                    return Fail("animation graph subject has no persistent handle");
                 }
                 for (const auto& output : prepared) {
                     const RE::BSFixedString name(output.name);
-                    bool success = false;
-                    switch (output.type) {
-                        case GraphType::kBool:
-                            success = holder->SetGraphVariableBool(name, std::get<bool>(output.value));
-                            break;
-                        case GraphType::kInt:
-                            success = holder->SetGraphVariableInt(name, std::get<std::int32_t>(output.value));
-                            break;
-                        case GraphType::kFloat:
-                            success = holder->SetGraphVariableFloat(name, std::get<float>(output.value));
-                            break;
-                    }
-                    if (!success) {
+                    if (subjectHandle) CancelInterpolation(subjectHandle, name);
+                    if (!SetGraphVariable(holder, name, output.value)) {
                         return Fail("graph variable setter returned false", output.name);
+                    }
+                }
+                for (const auto& output : prepared) {
+                    if (!output.interpolation) continue;
+                    const RE::BSFixedString name(output.name);
+                    if (a_duration == 0) {
+                        if (!SetGraphVariable(holder, name, output.interpolation->target)) {
+                            return Fail("graph variable setter returned false", output.name);
+                        }
+                    } else {
+                        StartInterpolation(subjectHandle, name, output, a_duration);
                     }
                 }
                 return true;
@@ -364,15 +434,14 @@ namespace Variables {
                 return std::isfinite(a_value) || Fail("post operation produced a non-finite value");
             }
 
-            bool Prepare(const Definition& a_definition, const float a_value, std::vector<PreparedOutput>& a_outputs) {
+            bool PrepareValue(const Definition& a_definition, const float a_value, GraphValue& a_output) {
                 if (!std::isfinite(a_value) || !a_definition.output_type) {
                     return Fail(!std::isfinite(a_value) ? "output value is not finite" : "output type is unavailable",
                                 a_definition.name);
                 }
-                PreparedOutput output{.name = a_definition.name, .type = *a_definition.output_type, .value = false};
                 switch (*a_definition.output_type) {
                     case GraphType::kBool:
-                        output.value = a_value != 0.0f;
+                        a_output = a_value != 0.0f;
                         break;
                     case GraphType::kInt: {
                         constexpr auto minimum = static_cast<float>(std::numeric_limits<std::int32_t>::min());
@@ -380,12 +449,25 @@ namespace Variables {
                         if (a_value < minimum || a_value >= maximumExclusive) {
                             return Fail("integer output is outside [-2147483648, 2147483648)", a_definition.name);
                         }
-                        output.value = static_cast<std::int32_t>(a_value);
+                        a_output = static_cast<std::int32_t>(a_value);
                         break;
                     }
                     case GraphType::kFloat:
-                        output.value = a_value;
+                        a_output = a_value;
                         break;
+                }
+                return true;
+            }
+
+            bool Prepare(const Definition& a_definition, const float a_value,
+                         const std::optional<float> a_targetValue, std::vector<PreparedOutput>& a_outputs) {
+                PreparedOutput output{.name = a_definition.name, .value = false};
+                if (!PrepareValue(a_definition, a_value, output.value)) return false;
+                if (a_targetValue) {
+                    GraphValue interpolationTarget = false;
+                    if (!PrepareValue(a_definition, *a_targetValue, interpolationTarget)) return false;
+                    output.interpolation = PreparedInterpolation{
+                        .mode = a_definition.interpolation->mode, .target = std::move(interpolationTarget)};
                 }
                 a_outputs.push_back(std::move(output));
                 return true;
@@ -424,5 +506,53 @@ namespace Variables {
             LogFailure(a_group, {}, "unknown evaluation exception");
         }
         return false;
+    }
+
+    void PauseInterpolations() noexcept {
+        interpolationsPaused = true;
+    }
+
+    void UpdateInterpolations(const float a_deltaTime) noexcept {
+        try {
+            if (!std::isfinite(a_deltaTime) || a_deltaTime <= 0.0f) return;
+            if (std::exchange(interpolationsPaused, false)) return;
+            if (activeInterpolations.empty()) return;
+
+            const std::chrono::duration<float> delta(a_deltaTime);
+            for (auto interpolation = activeInterpolations.begin(); interpolation != activeInterpolations.end();) {
+                const auto subject = interpolation->subject.get();
+                if (!subject) {
+                    interpolation = activeInterpolations.erase(interpolation);
+                    continue;
+                }
+
+                interpolation->elapsed = std::min(interpolation->elapsed + delta, interpolation->duration);
+                const auto complete = interpolation->elapsed == interpolation->duration;
+                GraphValue value = interpolation->target;
+                if (interpolation->mode == InterpolationMode::kLinear && !complete) {
+                    value = std::lerp(std::get<float>(interpolation->initial),
+                                      std::get<float>(interpolation->target),
+                                      interpolation->elapsed.count() / interpolation->duration.count());
+                } else if (interpolation->mode == InterpolationMode::kStep && !complete) {
+                    ++interpolation;
+                    continue;
+                }
+
+                const auto holder = static_cast<RE::IAnimationGraphManagerHolder*>(subject.get());
+                if (!SetGraphVariable(holder, interpolation->name, value)) {
+                    logger::error("Graph interpolation '{}' failed: graph variable setter returned false",
+                                  interpolation->name.c_str());
+                    interpolation = activeInterpolations.erase(interpolation);
+                } else if (complete) {
+                    interpolation = activeInterpolations.erase(interpolation);
+                } else {
+                    ++interpolation;
+                }
+            }
+        } catch (const std::exception& exception) {
+            logger::error("Graph interpolation update failed: {}", exception.what());
+        } catch (...) {
+            logger::error("Graph interpolation update failed: unknown exception");
+        }
     }
 }
