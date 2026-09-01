@@ -75,6 +75,30 @@ trailing entries use no variable file. Use `""` to skip an earlier animation.
 Write only the file name, without `.json`. Folder names must match:
 `animData/MyMod` uses `varData/MyMod`.
 
+## Calculate a duration
+
+`durations` accepts static milliseconds and definition names together:
+
+```json
+{
+  "animations": ["Take", "TakeHigh"],
+  "variables": ["take", "takeHigh"],
+  "durations": ["durationMs", 3200]
+}
+```
+
+`durationMs` is evaluated from `take.json` immediately before `Take` plays.
+It can use everything described below, including conditions, globals,
+condition functions, graph reads, and `post`. The result is rounded to the nearest millisecond.
+
+An omitted duration, an empty definition name, or no variable file mapped to
+that animation uses `0`. A missing definition in a mapped file rejects the config.
+If an existing definition cannot be calculated or is outside the supported
+millisecond range, that animation is skipped.
+
+`delay: true` totals only static durations. Use a numeric `delay` when durations
+are calculated at play time.
+
 ## Write a variable file
 
 Each key is either a helper or a graph variable to set:
