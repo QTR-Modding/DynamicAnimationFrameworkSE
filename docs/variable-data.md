@@ -220,14 +220,47 @@ Operations run from top to bottom:
 | Divide | `"divide": 2` |
 | Power | `"pow": 2` |
 | Clamp | `"clamp": [0, 1]` |
+| Absolute value | `"abs": true` |
+| Floor | `"floor": true` |
+| Ceiling | `"ceil": true` |
+| Round decimal places | `"round": 2` |
+| Upper bound | `"min": 1` |
+| Lower bound | `"max": 0` |
+| Natural logarithm | `"log": true` |
+| Exponential | `"exp": true` |
+| Sine | `"sin": true` |
+| Cosine | `"cos": true` |
+| Tangent | `"tan": true` |
 | Arcsine | `"asin": true` |
+| Arccosine | `"acos": true` |
+| Arctangent | `"atan": true` |
+| Two-argument arctangent | `"atan2": "xValue"` |
+| Less than | `"lt": 1` |
+| Less than or equal | `"le": 1` |
+| Greater than | `"gt": 1` |
+| Greater than or equal | `"ge": 1` |
+| Equal | `"eq": 1` |
+| Not equal | `"ne": 1` |
 
 Numbers may be replaced with the name of an earlier definition. Clamp accepts
-two numbers or names.
+two numbers or names. Operations without an operand require `true`.
 
-Division by zero gives `0`. `asin` accepts `-1` through `1` and returns radians.
-A reversed clamp or any operation that does not produce a valid number skips
-the animation.
+`round` takes the number of decimal places. The number is truncated toward
+zero before use. `2` rounds `12.3456` to `12.35`, `0` rounds it to `12`, and
+`-1` rounds it to `10`. Halfway values round away from zero.
+
+`min` keeps the lower of the current value and its operand. `max` keeps the
+higher. `atan2` calculates `atan2(current, operand)`, where the current value is
+Y and the operand is X. `atan2(0, 0)` gives `0`.
+
+Comparisons return `1` or `0` and automatically account for floating-point
+precision. Values considered equal are excluded by `lt` and `gt`, and included
+by `le` and `ge`.
+
+Division by zero gives `0`. `log` is the natural logarithm and requires a
+positive value. Trigonometric operations use radians. `asin` and `acos` accept
+`-1` through `1`. A reversed clamp or any operation that does not produce a
+valid number skips the animation.
 
 ## Read a graph variable
 

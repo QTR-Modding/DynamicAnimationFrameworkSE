@@ -205,11 +205,35 @@ namespace Variables {
                 }
 
                 PostOp operation{};
-                if (name == "asin") {
+                if (name == "abs" || name == "floor" || name == "ceil" || name == "log" || name == "exp" ||
+                    name == "sin" || name == "cos" || name == "tan" || name == "asin" || name == "acos" ||
+                    name == "atan") {
                     if (!it->value.IsBool() || !it->value.GetBool()) {
-                        return Fail(a_error, operationContext, "asin must be true");
+                        return Fail(a_error, operationContext, name + " must be true");
                     }
-                    operation.type = PostOperationType::kAsin;
+                    if (name == "abs") {
+                        operation.type = PostOperationType::kAbs;
+                    } else if (name == "floor") {
+                        operation.type = PostOperationType::kFloor;
+                    } else if (name == "ceil") {
+                        operation.type = PostOperationType::kCeil;
+                    } else if (name == "log") {
+                        operation.type = PostOperationType::kLog;
+                    } else if (name == "exp") {
+                        operation.type = PostOperationType::kExp;
+                    } else if (name == "sin") {
+                        operation.type = PostOperationType::kSin;
+                    } else if (name == "cos") {
+                        operation.type = PostOperationType::kCos;
+                    } else if (name == "tan") {
+                        operation.type = PostOperationType::kTan;
+                    } else if (name == "asin") {
+                        operation.type = PostOperationType::kAsin;
+                    } else if (name == "acos") {
+                        operation.type = PostOperationType::kAcos;
+                    } else {
+                        operation.type = PostOperationType::kAtan;
+                    }
                 } else if (name == "clamp") {
                     if (!it->value.IsArray() || it->value.Size() != 2) {
                         return Fail(a_error, operationContext, "clamp must be [minimum, maximum]");
@@ -235,6 +259,26 @@ namespace Variables {
                         operation.type = PostOperationType::kDivide;
                     } else if (name == "pow") {
                         operation.type = PostOperationType::kPow;
+                    } else if (name == "round") {
+                        operation.type = PostOperationType::kRound;
+                    } else if (name == "min") {
+                        operation.type = PostOperationType::kMin;
+                    } else if (name == "max") {
+                        operation.type = PostOperationType::kMax;
+                    } else if (name == "atan2") {
+                        operation.type = PostOperationType::kAtan2;
+                    } else if (name == "lt") {
+                        operation.type = PostOperationType::kLessThan;
+                    } else if (name == "le") {
+                        operation.type = PostOperationType::kLessThanOrEqual;
+                    } else if (name == "gt") {
+                        operation.type = PostOperationType::kGreaterThan;
+                    } else if (name == "ge") {
+                        operation.type = PostOperationType::kGreaterThanOrEqual;
+                    } else if (name == "eq") {
+                        operation.type = PostOperationType::kEqual;
+                    } else if (name == "ne") {
+                        operation.type = PostOperationType::kNotEqual;
                     } else {
                         return Fail(a_error, operationContext, "unknown post operation");
                     }

@@ -191,11 +191,50 @@ namespace Variables {
             }
 
             bool Apply(const PostOp& a_operation, float& a_value) {
-                if (a_operation.type == PostOperationType::kAsin) {
-                    if (a_value < -1.0f || a_value > 1.0f) return Fail("asin input is outside [-1, 1]");
-                    a_value = std::asin(a_value);
-                    return std::isfinite(a_value) || Fail("asin produced a non-finite value");
+                bool unary = true;
+                switch (a_operation.type) {
+                    case PostOperationType::kAbs:
+                        a_value = std::abs(a_value);
+                        break;
+                    case PostOperationType::kFloor:
+                        a_value = std::floor(a_value);
+                        break;
+                    case PostOperationType::kCeil:
+                        a_value = std::ceil(a_value);
+                        break;
+                    case PostOperationType::kLog:
+                        if (a_value <= 0.0f) return Fail("log input is not positive");
+                        a_value = std::log(a_value);
+                        break;
+                    case PostOperationType::kExp:
+                        a_value = std::exp(a_value);
+                        break;
+                    case PostOperationType::kSin:
+                        a_value = std::sin(a_value);
+                        break;
+                    case PostOperationType::kCos:
+                        a_value = std::cos(a_value);
+                        break;
+                    case PostOperationType::kTan:
+                        a_value = std::tan(a_value);
+                        break;
+                    case PostOperationType::kAsin:
+                        if (a_value < -1.0f || a_value > 1.0f) return Fail("asin input is outside [-1, 1]");
+                        a_value = std::asin(a_value);
+                        break;
+                    case PostOperationType::kAcos:
+                        if (a_value < -1.0f || a_value > 1.0f) return Fail("acos input is outside [-1, 1]");
+                        a_value = std::acos(a_value);
+                        break;
+                    case PostOperationType::kAtan:
+                        a_value = std::atan(a_value);
+                        break;
+                    default:
+                        unary = false;
+                        break;
                 }
+                if (unary) return std::isfinite(a_value) || Fail("unary post operation produced a non-finite value");
+
                 float first;
                 if (!EvaluateOperand(a_operation.first, first)) {
                     return false;
@@ -216,6 +255,39 @@ namespace Variables {
                     case PostOperationType::kPow:
                         a_value = std::pow(a_value, first);
                         break;
+                    case PostOperationType::kRound: {
+                        constexpr auto minimum = static_cast<float>(std::numeric_limits<std::int32_t>::min());
+                        constexpr auto maximumExclusive = -minimum;
+                        if (first < minimum || first >= maximumExclusive) {
+                            return Fail("round precision is outside the signed 32-bit range");
+                        }
+                        const auto precision = static_cast<std::int32_t>(first);
+                        const auto quantum = std::pow(10.0, -static_cast<double>(precision));
+                        if (precision > 0 && quantum < std::numeric_limits<float>::denorm_min()) {
+                            break;
+                        }
+                        const auto scale = std::pow(10.0, precision);
+                        if (!std::isfinite(scale) || scale == 0.0) {
+                            return Fail("round precision cannot be represented");
+                        }
+                        const auto rounded = std::round(static_cast<double>(a_value) * scale) / scale;
+                        if (!std::isfinite(rounded) ||
+                            rounded < static_cast<double>(std::numeric_limits<float>::lowest()) ||
+                            rounded > static_cast<double>(std::numeric_limits<float>::max())) {
+                            return Fail("round produced a value outside the finite float range");
+                        }
+                        a_value = static_cast<float>(rounded);
+                        break;
+                    }
+                    case PostOperationType::kMin:
+                        a_value = std::min(a_value, first);
+                        break;
+                    case PostOperationType::kMax:
+                        a_value = std::max(a_value, first);
+                        break;
+                    case PostOperationType::kAtan2:
+                        a_value = a_value == 0.0f && first == 0.0f ? 0.0f : std::atan2(a_value, first);
+                        break;
                     case PostOperationType::kClamp: {
                         if (!a_operation.second) {
                             return Fail("clamp maximum operand is missing");
@@ -228,8 +300,52 @@ namespace Variables {
                         a_value = std::clamp(a_value, first, second);
                         break;
                     }
+                    case PostOperationType::kLessThan:
+                    case PostOperationType::kLessThanOrEqual:
+                    case PostOperationType::kGreaterThan:
+                    case PostOperationType::kGreaterThanOrEqual:
+                    case PostOperationType::kEqual:
+                    case PostOperationType::kNotEqual: {
+                        const auto left = static_cast<double>(a_value);
+                        const auto right = static_cast<double>(first);
+                        const auto scale = std::max({1.0, std::abs(left), std::abs(right)});
+                        const auto equal = std::abs(left - right) <= std::numeric_limits<float>::epsilon() * scale;
+                        switch (a_operation.type) {
+                            case PostOperationType::kLessThan:
+                                a_value = left < right && !equal ? 1.0f : 0.0f;
+                                break;
+                            case PostOperationType::kLessThanOrEqual:
+                                a_value = left < right || equal ? 1.0f : 0.0f;
+                                break;
+                            case PostOperationType::kGreaterThan:
+                                a_value = left > right && !equal ? 1.0f : 0.0f;
+                                break;
+                            case PostOperationType::kGreaterThanOrEqual:
+                                a_value = left > right || equal ? 1.0f : 0.0f;
+                                break;
+                            case PostOperationType::kEqual:
+                                a_value = equal ? 1.0f : 0.0f;
+                                break;
+                            case PostOperationType::kNotEqual:
+                                a_value = equal ? 0.0f : 1.0f;
+                                break;
+                            default:
+                                return Fail("invalid comparison post operation");
+                        }
+                        break;
+                    }
+                    case PostOperationType::kAbs:
+                    case PostOperationType::kFloor:
+                    case PostOperationType::kCeil:
+                    case PostOperationType::kLog:
+                    case PostOperationType::kExp:
+                    case PostOperationType::kSin:
+                    case PostOperationType::kCos:
+                    case PostOperationType::kTan:
                     case PostOperationType::kAsin:
-                        return Fail("invalid asin post operation");
+                    case PostOperationType::kAcos:
+                    case PostOperationType::kAtan:
+                        return Fail("invalid unary post operation");
                 }
                 return std::isfinite(a_value) || Fail("post operation produced a non-finite value");
             }
