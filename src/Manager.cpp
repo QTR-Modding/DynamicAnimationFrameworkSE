@@ -27,6 +27,68 @@ namespace {
         }
         return false;
     }
+
+    void PrepareIdleAnimations(std::vector<Animation>& a_animations, RE::TESObjectREFR* a_target) {
+        
+        RE::ObjectRefHandle targetHandle{};
+        if (a_target) {
+            targetHandle = a_target->GetHandle();
+        }
+
+        for (auto& animation : a_animations) {
+            animation.target = targetHandle;
+
+            if (!animation.a_idle || !animation.a_idle->childIdles || animation.a_idle->childIdles->size() == 0) {
+                continue;
+            }
+
+            auto existing = std::move(animation.before_play);
+
+            animation.before_play = [existing = std::move(existing)](RE::Actor* a_actor,
+                                                                     Animation& a_animation) mutable {
+                if (existing && !existing(a_actor, a_animation)) {
+                    return false;
+                }
+
+                const auto targetRef = a_animation.target.get().get();
+
+                if (!Utils::ParentCheck(a_animation.a_idle, a_actor, targetRef)) {
+                    return false;
+                }
+
+                std::vector<RE::TESIdleForm*> candidates;
+
+                if (a_animation.a_idle->childIdles) {
+                    std::unordered_set<RE::TESIdleForm*> seen;
+                    for (const auto& childIdle : *a_animation.a_idle->childIdles) {
+                        const auto child = childIdle ? childIdle->As<RE::TESIdleForm>() : nullptr;
+                        Utils::CollectIdles(child, candidates, a_actor, targetRef, seen);
+                    }
+                }
+
+                if (candidates.empty()) {
+                    return false;
+                }
+
+                RE::TESIdleForm* pick;
+                if (candidates.size() == 1) {
+                    pick = candidates.front();
+                } else {
+                    thread_local std::mt19937 rng{std::random_device{}()};
+                    std::uniform_int_distribution<std::size_t> dist(0, candidates.size() - 1);
+                    pick = candidates[dist(rng)];
+                }
+
+#ifndef NDEBUG
+                logger::trace("Picked {:08X} {} from {} candidates", pick->GetFormID(), pick->GetFormEditorID(),
+                              candidates.size());
+#endif
+
+                a_animation.a_idle = pick;
+                return true;
+            };
+        }
+    }
 }
 
 bool Manager::PlayAnimation(RE::Actor* a_actor,
@@ -60,11 +122,13 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
 
         if (auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item});
             !anim_data.animations.empty()) {
+            const auto target_ref = a_info.a_item ? a_info.a_item->AsReference() : nullptr;
             if (!anim_data.variables.empty()) {
                 Variables::PrepareAnimations(anim_data.animations, std::move(anim_data.variables),
-                                             anim_data.duration_indices,
-                                             a_info.a_item ? a_info.a_item->AsReference() : nullptr);
+                                             anim_data.duration_indices, target_ref);
             }
+
+            PrepareIdleAnimations(anim_data.animations, target_ref);
 
             if (PlayAnimation(actor, {a_info.event_id, std::move(anim_data.animations)})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {

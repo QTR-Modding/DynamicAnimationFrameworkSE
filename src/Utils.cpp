@@ -1,5 +1,23 @@
 #include "Utils.h"
 
+namespace {
+    void LogConditionResults(const RE::TESCondition* a_condition, RE::Actor* actor, RE::TESObjectREFR* target) {
+        if (!a_condition) {
+            return;
+        }
+
+        auto a_head = a_condition->head;
+
+        while (a_head) {
+            RE::ConditionCheckParams params(actor, target);
+
+            logger::trace("Condition {} = {}", a_head->data.functionData.function.underlying(), a_head->IsTrue(params));
+
+            a_head = a_head->next;
+        }
+    }
+}
+
 RE::StandardItemData* Utils::GetSelectedItemDataInMenu(std::string& a_menuOut) {
     if (const auto ui = RE::UI::GetSingleton()) {
         if (ui->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
@@ -100,6 +118,84 @@ bool Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) 
         }
     }
     return false;
+}
+
+bool Utils::ShouldSkip([[maybe_unused]] const RE::TESConditionItem* it) {
+    return false;
+    //const auto func = it->data.functionData.function.get();
+
+    //return func == RE::FUNCTION_DATA::FunctionID::kIsLastHostileActor ||
+    //       func == RE::FUNCTION_DATA::FunctionID::kShouldAttackKill ||
+    //       func == RE::FUNCTION_DATA::FunctionID::kGetDetected ||
+    //       func == RE::FUNCTION_DATA::FunctionID::kGetRandomPercent;
+}
+
+bool Utils::EvalConditionsFiltered(const RE::TESCondition& conds, RE::Actor* actor, RE::TESObjectREFR* target) {
+    RE::ConditionCheckParams p(actor, target);
+
+    bool overall = true;
+    bool blockHasAny = false;
+    bool blockValue = false;
+    bool prevWasOR = false;
+
+    for (auto it = conds.head; it; it = it->next) {
+
+        const bool v = ShouldSkip(it) ? true : it->IsTrue(p);
+
+        if (!blockHasAny) {
+            blockValue = v;
+            blockHasAny = true;
+        } else {
+            if (prevWasOR) {
+                blockValue = blockValue || v;
+            } else {
+                overall = overall && blockValue;
+                if (!overall) {
+                    return false;
+                }
+                blockValue = v;
+            }
+        }
+
+        prevWasOR = it->data.flags.isOR;
+    }
+
+    overall = overall && (blockHasAny ? blockValue : true);
+    return overall;
+}
+
+bool Utils::ParentCheck(const RE::TESIdleForm* idle, RE::Actor* actor, RE::TESObjectREFR* target) {
+    return idle && EvalConditionsFiltered(idle->conditions, actor, target);
+}
+
+void Utils::CollectIdles(RE::TESIdleForm* parent_idle, std::vector<RE::TESIdleForm*>& out, RE::Actor* actor,
+    RE::TESObjectREFR* target, std::unordered_set<RE::TESIdleForm*>& seen) {
+    if (!parent_idle || !seen.emplace(parent_idle).second) {
+        return;
+    }
+
+    CollectIdles(parent_idle->prevIdle, out, actor, target, seen);
+
+    if (!parent_idle->CheckConditions(actor, target, false)) {
+#ifndef NDEBUG
+        LogConditionResults(&parent_idle->conditions, actor, target);
+#endif
+        return;
+    }
+
+    const bool hasChildren =
+        parent_idle->childIdles && parent_idle->childIdles->begin() != parent_idle->childIdles->end();
+
+    if (!hasChildren && (!parent_idle->animEventName.empty() || !parent_idle->animFileName.empty())) {
+        out.push_back(parent_idle);
+    }
+
+    if (parent_idle->childIdles) {
+        for (const auto& childIdle : *parent_idle->childIdles) {
+            const auto child = childIdle ? childIdle->As<RE::TESIdleForm>() : nullptr;
+            CollectIdles(child, out, actor, target, seen);
+        }
+    }
 }
 
 bool ModCompatibility::ModInfo::IsInstalled() {

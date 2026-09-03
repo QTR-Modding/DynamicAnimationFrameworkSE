@@ -17,7 +17,7 @@ namespace Variables {
             const auto durationIndex = i < a_durationIndices.size() ? a_durationIndices[i] : std::nullopt;
 
             a_animations[i].before_play = [group = std::move(group), durationIndex, targetHandle, targetExpected](
-                RE::Actor* a_subject, const Animation&, unsigned int& a_duration) {
+                RE::Actor* a_subject, Animation& a_animation) {
                     RE::TESObjectREFRPtr target;
                     if (targetExpected) {
                         if (!targetHandle) {
@@ -30,7 +30,7 @@ namespace Variables {
                             return false;
                         }
                     }
-                    return EvaluateAndWrite(*group, a_subject, target.get(), durationIndex, a_duration);
+                    return EvaluateAndWrite(*group, a_subject, target.get(), durationIndex, a_animation.t_wait_ms);
                 };
         }
     }
