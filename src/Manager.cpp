@@ -60,10 +60,17 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
 
         if (auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item});
             !anim_data.animations.empty()) {
+            const auto target_ref = a_info.a_item ? a_info.a_item->AsReference() : nullptr;
             if (!anim_data.variables.empty()) {
                 Variables::PrepareAnimations(anim_data.animations, std::move(anim_data.variables),
-                                             anim_data.duration_indices,
-                                             a_info.a_item ? a_info.a_item->AsReference() : nullptr);
+                                             anim_data.duration_indices, target_ref);
+            }
+
+            if (target_ref) {
+                const auto handle = target_ref->GetHandle();
+                for (auto& animation : anim_data.animations) {
+                    animation.target = handle;
+                }
             }
 
             if (PlayAnimation(actor, {a_info.event_id, std::move(anim_data.animations)})) {
