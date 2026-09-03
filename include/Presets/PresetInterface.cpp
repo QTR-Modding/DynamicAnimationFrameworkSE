@@ -187,9 +187,9 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
     std::size_t i = 0;
     for (const auto& name : names) {
         RE::TESIdleForm* a_idle = nullptr;
-        //if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0){
-        //    a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
-        //}
+        if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0) {
+            a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
+        }
         auto duration = decltype(Animation::t_wait_ms){};
         if (i < durations.size()) {
             if (const auto milliseconds = std::get_if<int>(&durations[i])) {
@@ -198,7 +198,7 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
                 }
                 duration = static_cast<decltype(duration)>(*milliseconds);
             } else if (const auto& definitionName = std::get<std::string>(durations[i]);
-                       !definitionName.empty() && i < variables.size() && variables[i]) {
+                !definitionName.empty() && i < variables.size() && variables[i]) {
                 const auto& definitions = variables[i]->definitions;
                 const auto definition = std::ranges::find(definitions, definitionName, &Variables::Definition::name);
                 if (definition == definitions.end()) {
@@ -366,8 +366,8 @@ void Presets::Load() {
                     continue;
                 }
 
-                for (std::unique_lock lock(m_anim_data_); 
-                    auto a_event_type : anim_data.events) {
+                for (std::unique_lock lock(m_anim_data_);
+                     auto a_event_type : anim_data.events) {
                     anim_map[a_event_type].push_back(anim_data);
                 }
             }
