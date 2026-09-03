@@ -113,11 +113,80 @@ These are all supported fields:
 | --- | --- |
 | `value` | Value to use. Required in object form. |
 | `type` | Graph type: `0` Boolean, `1` Integer, `2` Float. Without it, this is a helper. |
+| `target` | Boolean; default `false`. When `true`, swaps Subject and Target for this definition. |
 | `conditions` | Earlier definitions or Perks that choose between `value` and `else`. |
 | `else` | Used when `conditions` fail. Default: `0`. |
 | `post` | Changes `value` after it is found. |
 
 A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
+
+## Evaluate a definition against the event Target
+
+Normally, every definition uses:
+
+```text
+Subject = animation Actor
+Target  = event reference, when the event supplies one
+```
+
+Set:
+
+```json
+"target": true
+```
+
+on an expanded definition to swap those roles for that definition:
+
+```text
+Subject = event reference
+Target  = animation Actor
+```
+
+Example:
+
+```json
+{
+  "targetScale": {
+    "value": [24],
+    "target": true
+  }
+}
+```
+
+`[24]` is `GetScale()`. With `target: true`, it reads the event Target's scale
+instead of the animation Actor's scale.
+
+The swap applies to that definition's:
+
+- condition-function/provider calls,
+- Perk conditions,
+- animation graph reads, and
+- animation graph writes.
+
+For a graph output, `target: true` therefore writes the graph variable to the
+event Target's animation graph instead of the animation Actor's graph:
+
+```json
+{
+  "II_AnimationSpeed": {
+    "value": 2.0,
+    "type": 2,
+    "target": true
+  }
+}
+```
+
+The event Target must exist for a swapped definition. Graph reads/writes also
+require that the effective Subject has the requested animation graph variable.
+If evaluation or a graph operation fails, DAF skips that animation.
+
+`target` is **per definition**. If one definition references another definition,
+the referenced definition uses its own `target` setting; it does not inherit the
+caller's setting.
+
+Literal values and Globals do not themselves depend on Subject/Target, but any
+conditions, provider calls, graph reads, or graph writes in the definition still
+use the definition's selected context.
 
 ## Calculate a duration
 
@@ -133,7 +202,9 @@ A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 
 `durationMs` is the helper defined in `take.json` above. It is evaluated
 immediately before `Take` plays. It can use everything described below,
-including conditions, globals, condition functions, graph reads, and `post`.
+including conditions, globals, condition functions, graph reads, `target`, and
+`post`.
+
 The result is rounded to the nearest millisecond.
 
 An omitted duration, an empty definition name, or no variable file mapped to
@@ -196,9 +267,11 @@ Each condition can be an earlier definition or a Perk Form identifier:
 - `post` changes only `value`, not `else`.
 
 Referenced definitions are calculated on demand and must be written earlier in
-the same file. If one cannot be calculated, DAF skips the animation. Perk
-conditions receive the animation actor as Subject and the event reference as
-Target when the event has one.
+the same file. If one cannot be calculated, DAF skips the animation.
+
+Perk conditions normally receive the animation Actor as Subject and the event
+reference as Target when the event has one. On a definition with `target: true`,
+those two roles are swapped.
 
 To apply `post` to both paths, make the choice in a helper:
 
@@ -294,6 +367,8 @@ This reads the current float value, halves it, and writes it back.
 
 - `["name", type]` reads an existing graph variable.
 - Every graph read happens before this file sets any graph variables.
+- A definition with `target: true` reads from the event Target's graph instead
+  of the animation Actor's graph.
 
 Use the same type numbers as above. The type must match the graph variable.
 
@@ -321,8 +396,11 @@ each function does and which parameters it takes.
 [CommunityFunctionsSE](https://github.com/QTR-Modding/CommunityFunctionsSE)
 lists community function IDs. Its range is `1000` through `9999`.
 
-DAF always supplies the animation actor as Subject. Target is the event
+Normally DAF supplies the animation Actor as Subject. Target is the event
 reference, such as the item being picked up, when the event supplies one.
+
+On a definition with `target: true`, DAF swaps those roles: the event reference
+is Subject and the animation Actor is Target.
 
 Events that remove their reference, such as item pickup, can lose Target before
 the animation runs. If a condition function needs it, use a numeric `delay` in
@@ -385,6 +463,9 @@ not use `else`; `else` is only for failed `conditions`.
   load.
 - DAF calculates a named duration and every graph variable value before writing.
   If a calculation fails, nothing changes and the animation is skipped.
+- A `target: true` definition fails if the event Target is unavailable.
+- A swapped graph read/write fails if the event Target does not have the
+  requested animation graph variable.
 - DAF then writes in file order. If a later write fails, earlier changes remain.
   The animation is still skipped.
 - The next queued animation still runs.
