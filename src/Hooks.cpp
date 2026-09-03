@@ -70,6 +70,8 @@ void Hooks::Install() {
     ActivateHook<RE::TESObjectACTI>::install();
     ActivateHook<RE::TESObjectLIGH>::install();
     ActivateHook<RE::TESObjectTREE>::install();
+    ActivateHook<RE::BGSTalkingActivator>::install();
+    ActivateHook<RE::TESNPC>::install();
 }
 
 void Hooks::add_item_functor(RE::TESObjectREFR* a_this, RE::TESObjectREFR* a_object, int32_t a_count, bool a4,

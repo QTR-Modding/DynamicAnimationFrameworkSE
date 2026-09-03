@@ -27,6 +27,58 @@ namespace {
         }
         return false;
     }
+
+    void PrepareIdleAnimations(std::vector<Animation>& a_animations, RE::TESObjectREFR* a_target) {
+        RE::ObjectRefHandle targetHandle{};
+        if (a_target) {
+            targetHandle = a_target->GetHandle();
+        }
+
+        for (auto& animation : a_animations) {
+            animation.target = targetHandle;
+
+            if (!animation.a_idle || !animation.a_idle->childIdles) {
+                continue;
+            }
+
+            auto existing = std::move(animation.before_play);
+
+            animation.before_play = [existing = std::move(existing)](RE::Actor* a_actor,
+                                                                     Animation& a_animation) mutable {
+                if (existing && !existing(a_actor, a_animation)) {
+                    return false;
+                }
+
+                const auto targetRef = a_animation.target.get();
+                const auto target = targetRef ? targetRef->As<RE::Actor>() : nullptr;
+
+                if (!target) {
+                    return false;
+                }
+
+                if (!Utils::ParentCheck(a_animation.a_idle, a_actor, target)) {
+                    return false;
+                }
+
+                std::vector<RE::TESIdleForm*> candidates;
+
+                if (a_animation.a_idle->childIdles) {
+                    std::unordered_set<RE::TESIdleForm*> seen;
+                    for (const auto& childIdle : *a_animation.a_idle->childIdles) {
+                        const auto child = childIdle ? childIdle->As<RE::TESIdleForm>() : nullptr;
+                        Utils::CollectIdles(child, candidates, a_actor, target, seen);
+                    }
+                }
+
+                if (candidates.empty()) {
+                    return false;
+                }
+
+                a_animation.a_idle = candidates.front();
+                return true;
+            };
+        }
+    }
 }
 
 bool Manager::PlayAnimation(RE::Actor* a_actor,
@@ -66,12 +118,7 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
                                              anim_data.duration_indices, target_ref);
             }
 
-            if (target_ref) {
-                const auto handle = target_ref->GetHandle();
-                for (auto& animation : anim_data.animations) {
-                    animation.target = handle;
-                }
-            }
+            PrepareIdleAnimations(anim_data.animations, target_ref);
 
             if (PlayAnimation(actor, {a_info.event_id, std::move(anim_data.animations)})) {
                 if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {

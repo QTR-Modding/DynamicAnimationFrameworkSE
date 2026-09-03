@@ -1,4 +1,5 @@
 #pragma once
+#include <unordered_set>
 
 namespace Utils {
     inline std::map<std::string_view, bool> menu_blocks = {
@@ -28,6 +29,15 @@ namespace Utils {
 
     const char* GetModelPath(RE::TESForm* a_form, RE::Actor* a_actor = nullptr);
     bool GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out);
+
+    bool ShouldSkip(const RE::TESConditionItem* it);
+
+    bool EvalConditionsFiltered(const RE::TESCondition& conds, RE::Actor* actor, RE::Actor* target);
+
+    bool ParentCheck(const RE::TESIdleForm* idle, RE::Actor* actor, RE::Actor* target);
+
+    void CollectIdles(RE::TESIdleForm* parent_idle, std::vector<RE::TESIdleForm*>& out, RE::Actor* actor,
+                      RE::Actor* target, std::unordered_set<RE::TESIdleForm*>& seen);
 }
 
 namespace ModCompatibility {
