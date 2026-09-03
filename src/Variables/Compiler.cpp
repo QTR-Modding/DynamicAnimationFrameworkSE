@@ -143,8 +143,7 @@ namespace Variables {
             std::vector<Providers::ProviderLiteral> arguments;
             arguments.reserve(a_value.Size() - 1);
             for (rapidjson::SizeType i = 1; i < a_value.Size(); ++i) {
-                const auto& argument = a_value[i];
-                if (argument.IsNumber()) {
+                if (const auto& argument = a_value[i]; argument.IsNumber()) {
                     const auto number = argument.GetDouble();
                     if (!std::isfinite(number)) {
                         return Fail(a_error, a_context, "provider numeric argument must be finite");
@@ -316,6 +315,7 @@ namespace Variables {
             const rapidjson::Value* conditions = nullptr;
             const rapidjson::Value* post = nullptr;
             const rapidjson::Value* type = nullptr;
+            const rapidjson::Value* target = nullptr;
             std::unordered_set<std::string> seen;
             for (auto it = a_value.MemberBegin(); it != a_value.MemberEnd(); ++it) {
                 const std::string field = it->name.GetString();
@@ -332,8 +332,8 @@ namespace Variables {
                     post = &it->value;
                 } else if (field == "type") {
                     type = &it->value;
-                } else if (field == "set") {
-                    return Fail(a_error, definitionContext, "field 'set' was removed; use 'type' to mark an output");
+                } else if (field == "target") {
+                    target = &it->value;
                 } else {
                     return Fail(a_error, definitionContext + '.' + field, "unknown definition field");
                 }
@@ -365,6 +365,13 @@ namespace Variables {
                     return false;
                 }
                 a_result.output_type = graphType;
+            }
+            if (target) {
+                if (!target->IsBool()) {
+                    return Fail(a_error, definitionContext + ".target", "target must be a boolean");
+                }
+
+                a_result.swap_subject_with_target = target->GetBool();
             }
             return true;
         }

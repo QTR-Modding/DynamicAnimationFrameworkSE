@@ -15,6 +15,7 @@ namespace Variables {
             std::string_view name;
             GraphType type;
             std::variant<bool, std::int32_t, float> value;
+            RE::IAnimationGraphManagerHolder* holder;
         };
 
         struct EvaluationFailure {
@@ -27,12 +28,11 @@ namespace Variables {
             Evaluation(const CompiledGroup& a_group, RE::TESObjectREFR* a_subject, RE::TESObjectREFR* a_target)
                 : group(a_group),
                   subject(a_subject),
-                  target(a_target),
-                  holder(a_subject ? static_cast<RE::IAnimationGraphManagerHolder*>(a_subject) : nullptr) {
+                  target(a_target) {
             }
 
             bool Run(const std::optional<std::size_t> a_durationIndex, unsigned int& a_duration) {
-                if (!subject || !holder) return Fail("animation graph subject is unavailable");
+                if (!subject) return Fail("animation subject is unavailable");
                 if (a_durationIndex) {
                     float duration;
                     if (!Calculate(*a_durationIndex, duration)) return false;
@@ -58,9 +58,9 @@ namespace Variables {
                     if (!Calculate(index, value)) {
                         return false;
                     }
-#ifndef NDEBUG
+                    #ifndef NDEBUG
                     logger::trace("{} [{}] = {}", group.context, definition.name, value);
-#endif
+                    #endif
                     if (!Prepare(definition, value, prepared)) return false;
                 }
                 for (const auto& output : prepared) {
@@ -68,13 +68,13 @@ namespace Variables {
                     bool success = false;
                     switch (output.type) {
                         case GraphType::kBool:
-                            success = holder->SetGraphVariableBool(name, std::get<bool>(output.value));
+                            success = output.holder->SetGraphVariableBool(name, std::get<bool>(output.value));
                             break;
                         case GraphType::kInt:
-                            success = holder->SetGraphVariableInt(name, std::get<std::int32_t>(output.value));
+                            success = output.holder->SetGraphVariableInt(name, std::get<std::int32_t>(output.value));
                             break;
                         case GraphType::kFloat:
-                            success = holder->SetGraphVariableFloat(name, std::get<float>(output.value));
+                            success = output.holder->SetGraphVariableFloat(name, std::get<float>(output.value));
                             break;
                     }
                     if (!success) {
@@ -87,10 +87,24 @@ namespace Variables {
             [[nodiscard]] const std::optional<EvaluationFailure>& Failure() const noexcept { return failure; }
 
         private:
+            RE::TESObjectREFR* GetSubject(const Definition& a_definition) const {
+                return a_definition.swap_subject_with_target ? target : subject;
+            }
+
+            RE::TESObjectREFR* GetTarget(const Definition& a_definition) const {
+                return a_definition.swap_subject_with_target ? subject : target;
+            }
+
+            RE::IAnimationGraphManagerHolder* GetHolder(const Definition& a_definition) const {
+                const auto ref = GetSubject(a_definition);
+                return ref ? static_cast<RE::IAnimationGraphManagerHolder*>(ref) : nullptr;
+            }
+
             bool Fail(std::string a_reason, const std::string_view a_definition = {}) {
                 if (!failure)
-                    failure = EvaluationFailure{.definition = std::string(a_definition.empty() ? currentDefinition : a_definition),
-                                                .reason = std::move(a_reason)};
+                    failure = EvaluationFailure{
+                        .definition = std::string(a_definition.empty() ? currentDefinition : a_definition),
+                        .reason = std::move(a_reason)};
                 return false;
             }
 
@@ -99,6 +113,12 @@ namespace Variables {
                     return Fail("referenced definition index is out of range");
                 }
                 const auto& definition = group.definitions[a_index];
+                auto* definitionSubject = GetSubject(definition);
+                auto* definitionTarget = GetTarget(definition);
+
+                if (!definitionSubject) {
+                    return Fail("definition subject is unavailable", definition.name);
+                }
                 const auto previousDefinition = currentDefinition;
                 currentDefinition = definition.name;
                 struct Restore {
@@ -110,7 +130,7 @@ namespace Variables {
                 if (!gatePassed) {
                     for (const auto& condition : definition.conditions) {
                         if (const auto perk = std::get_if<RE::BGSPerk*>(&condition)) {
-                            gatePassed = (*perk)->perkConditions.IsTrue(subject, target);
+                            gatePassed = (*perk)->perkConditions.IsTrue(definitionSubject, definitionTarget);
                         } else {
                             float value;
                             if (!Calculate(std::get<std::size_t>(condition), value)) return false;
@@ -124,10 +144,10 @@ namespace Variables {
                         a_result = 0.0f;
                         return true;
                     }
-                    if (!EvaluateSource(*definition.else_val, a_result)) return false;
+                    if (!EvaluateSource(definition, *definition.else_val, a_result)) return false;
                     return std::isfinite(a_result) || Fail("else value is not finite");
                 }
-                if (!EvaluateSource(definition.value, a_result)) {
+                if (!EvaluateSource(definition, definition.value, a_result)) {
                     return false;
                 }
                 if (!std::isfinite(a_result)) return Fail("value is not finite");
@@ -140,9 +160,13 @@ namespace Variables {
                 return true;
             }
 
-            bool EvaluateSource(const ValueSource& a_source, float& a_result) {
+            bool EvaluateSource(const Definition& a_definition, const ValueSource& a_source, float& a_result) {
+                auto definitionSubject = GetSubject(a_definition);
+                auto definitionTarget = GetTarget(a_definition);
+                auto holder = GetHolder(a_definition);
                 return std::visit(
-                    [this, &a_result]<typename T>(const T& a_value) -> bool {
+                    [this, &a_result, definitionSubject, definitionTarget,
+                        holder]<typename T>(const T& a_value) -> bool {
                         if constexpr (std::is_same_v<T, float>) {
                             a_result = a_value;
                             return true;
@@ -153,11 +177,14 @@ namespace Variables {
                             return std::isfinite(a_result) || Fail("TESGlobal source is not finite");
                         } else if constexpr (std::is_same_v<T, std::shared_ptr<const Providers::ProviderCall>>) {
                             std::string error;
-                            if (!Providers::Evaluate(*a_value, subject, target, a_result, error)) {
+                            if (!Providers::Evaluate(*a_value, definitionSubject, definitionTarget, a_result, error)) {
                                 return Fail(error.empty() ? "provider evaluation failed" : std::move(error));
                             }
                             return std::isfinite(a_result) || Fail("provider result is not finite");
                         } else if constexpr (std::is_same_v<T, GraphRead>) {
+                            if (!holder) {
+                                return Fail("animation graph subject is unavailable");
+                            }
                             const RE::BSFixedString name(a_value.name);
                             switch (a_value.type) {
                                 case GraphType::kBool: {
@@ -369,7 +396,13 @@ namespace Variables {
                     return Fail(!std::isfinite(a_value) ? "output value is not finite" : "output type is unavailable",
                                 a_definition.name);
                 }
-                PreparedOutput output{.name = a_definition.name, .type = *a_definition.output_type, .value = false};
+                PreparedOutput output{.name = a_definition.name,
+                                      .type = *a_definition.output_type,
+                                      .value = false,
+                                      .holder = GetHolder(a_definition)};
+                if (!output.holder) {
+                    return Fail("animation graph subject is unavailable", a_definition.name);
+                }
                 switch (*a_definition.output_type) {
                     case GraphType::kBool:
                         output.value = a_value != 0.0f;
@@ -394,7 +427,6 @@ namespace Variables {
             const CompiledGroup& group;
             RE::TESObjectREFR* subject;
             RE::TESObjectREFR* target;
-            RE::IAnimationGraphManagerHolder* holder;
             std::string_view currentDefinition;
             std::optional<EvaluationFailure> failure;
         };

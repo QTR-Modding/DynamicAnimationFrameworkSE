@@ -62,6 +62,7 @@ namespace Variables {
         std::vector<Condition> conditions;
         std::vector<PostOp> post;
         std::optional<GraphType> output_type;
+        bool swap_subject_with_target = false;
     };
 
     struct CompiledGroup {
