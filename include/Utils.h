@@ -32,12 +32,12 @@ namespace Utils {
 
     bool ShouldSkip(const RE::TESConditionItem* it);
 
-    bool EvalConditionsFiltered(const RE::TESCondition& conds, RE::Actor* actor, RE::Actor* target);
+    bool EvalConditionsFiltered(const RE::TESCondition& conds, RE::Actor* actor, RE::TESObjectREFR* target);
 
-    bool ParentCheck(const RE::TESIdleForm* idle, RE::Actor* actor, RE::Actor* target);
+    bool ParentCheck(const RE::TESIdleForm* idle, RE::Actor* actor, RE::TESObjectREFR* target);
 
     void CollectIdles(RE::TESIdleForm* parent_idle, std::vector<RE::TESIdleForm*>& out, RE::Actor* actor,
-                      RE::Actor* target, std::unordered_set<RE::TESIdleForm*>& seen);
+                      RE::TESObjectREFR* target, std::unordered_set<RE::TESIdleForm*>& seen);
 }
 
 namespace ModCompatibility {

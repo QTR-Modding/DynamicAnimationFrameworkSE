@@ -28,7 +28,42 @@ namespace {
         return false;
     }
 
+    std::unordered_map<RE::FormID, std::unordered_set<RE::FormID>> used_idle_candidates;
+
+    RE::TESIdleForm* PickIdleWithVariety(const RE::TESIdleForm* a_root,
+                                         const std::vector<RE::TESIdleForm*>& a_candidates) {
+        if (!a_root || a_candidates.empty()) {
+            return nullptr;
+        }
+
+        auto& used = used_idle_candidates[a_root->GetFormID()];
+
+        std::vector<RE::TESIdleForm*> pool;
+        pool.reserve(a_candidates.size());
+
+        for (auto idle : a_candidates) {
+            if (!used.contains(idle->GetFormID())) {
+                pool.push_back(idle);
+            }
+        }
+
+        // Every currently-valid candidate has been used -> start a new cycle.
+        if (pool.empty()) {
+            used.clear();
+            pool = a_candidates;
+        }
+
+        thread_local std::mt19937 rng{std::random_device{}()};
+        std::uniform_int_distribution<std::size_t> dist(0, pool.size() - 1);
+
+        const auto pick = pool[dist(rng)];
+        used.insert(pick->GetFormID());
+
+        return pick;
+    }
+
     void PrepareIdleAnimations(std::vector<Animation>& a_animations, RE::TESObjectREFR* a_target) {
+        
         RE::ObjectRefHandle targetHandle{};
         if (a_target) {
             targetHandle = a_target->GetHandle();
@@ -37,7 +72,7 @@ namespace {
         for (auto& animation : a_animations) {
             animation.target = targetHandle;
 
-            if (!animation.a_idle || !animation.a_idle->childIdles) {
+            if (!animation.a_idle || !animation.a_idle->childIdles || animation.a_idle->childIdles->size() == 0) {
                 continue;
             }
 
@@ -49,14 +84,9 @@ namespace {
                     return false;
                 }
 
-                const auto targetRef = a_animation.target.get();
-                const auto target = targetRef ? targetRef->As<RE::Actor>() : nullptr;
+                const auto targetRef = a_animation.target.get().get();
 
-                if (!target) {
-                    return false;
-                }
-
-                if (!Utils::ParentCheck(a_animation.a_idle, a_actor, target)) {
+                if (!Utils::ParentCheck(a_animation.a_idle, a_actor, targetRef)) {
                     return false;
                 }
 
@@ -66,7 +96,7 @@ namespace {
                     std::unordered_set<RE::TESIdleForm*> seen;
                     for (const auto& childIdle : *a_animation.a_idle->childIdles) {
                         const auto child = childIdle ? childIdle->As<RE::TESIdleForm>() : nullptr;
-                        Utils::CollectIdles(child, candidates, a_actor, target, seen);
+                        Utils::CollectIdles(child, candidates, a_actor, targetRef, seen);
                     }
                 }
 
@@ -74,7 +104,19 @@ namespace {
                     return false;
                 }
 
-                a_animation.a_idle = candidates.front();
+                const auto root = a_animation.a_idle;
+
+                const auto pick = PickIdleWithVariety(root, candidates);
+                if (!pick) {
+                    return false;
+                }
+
+#ifndef NDEBUG
+                logger::trace("Picked {:08X} {} from {} candidates", pick->GetFormID(), pick->GetFormEditorID(),
+                              candidates.size());
+#endif
+
+                a_animation.a_idle = pick;
                 return true;
             };
         }

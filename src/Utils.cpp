@@ -1,7 +1,7 @@
 #include "Utils.h"
 
 namespace {
-    void LogConditionResults(const RE::TESCondition* a_condition, RE::Actor* actor, RE::Actor* target) {
+    void LogConditionResults(const RE::TESCondition* a_condition, RE::Actor* actor, RE::TESObjectREFR* target) {
         if (!a_condition) {
             return;
         }
@@ -120,16 +120,17 @@ bool Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) 
     return false;
 }
 
-bool Utils::ShouldSkip(const RE::TESConditionItem* it) {
-    const auto func = it->data.functionData.function.get();
+bool Utils::ShouldSkip([[maybe_unused]] const RE::TESConditionItem* it) {
+    return false;
+    //const auto func = it->data.functionData.function.get();
 
-    return func == RE::FUNCTION_DATA::FunctionID::kIsLastHostileActor ||
-           func == RE::FUNCTION_DATA::FunctionID::kShouldAttackKill ||
-           func == RE::FUNCTION_DATA::FunctionID::kGetDetected ||
-           func == RE::FUNCTION_DATA::FunctionID::kGetRandomPercent;
+    //return func == RE::FUNCTION_DATA::FunctionID::kIsLastHostileActor ||
+    //       func == RE::FUNCTION_DATA::FunctionID::kShouldAttackKill ||
+    //       func == RE::FUNCTION_DATA::FunctionID::kGetDetected ||
+    //       func == RE::FUNCTION_DATA::FunctionID::kGetRandomPercent;
 }
 
-bool Utils::EvalConditionsFiltered(const RE::TESCondition& conds, RE::Actor* actor, RE::Actor* target) {
+bool Utils::EvalConditionsFiltered(const RE::TESCondition& conds, RE::Actor* actor, RE::TESObjectREFR* target) {
     RE::ConditionCheckParams p(actor, target);
 
     bool overall = true;
@@ -139,16 +140,7 @@ bool Utils::EvalConditionsFiltered(const RE::TESCondition& conds, RE::Actor* act
 
     for (auto it = conds.head; it; it = it->next) {
 
-        const auto func = it->data.functionData.function.underlying();
-        const bool skipped = ShouldSkip(it);
-        const bool raw = it->IsTrue(p);
-        const bool v = skipped ? true : raw;
-
-#ifndef NDEBUG
-        logger::trace("Condition {} | raw={} skipped={} effective={} isOR={} swapTarget={} op={} compare={}", func, raw,
-                      skipped, v, static_cast<bool>(it->data.flags.isOR), static_cast<bool>(it->data.flags.swapTarget), static_cast<int>(it->data.flags.opCode), static_cast<float>(it->data.comparisonValue.f));
-        #endif
-
+        const bool v = ShouldSkip(it) ? true : it->IsTrue(p);
 
         if (!blockHasAny) {
             blockValue = v;
@@ -172,12 +164,12 @@ bool Utils::EvalConditionsFiltered(const RE::TESCondition& conds, RE::Actor* act
     return overall;
 }
 
-bool Utils::ParentCheck(const RE::TESIdleForm* idle, RE::Actor* actor, RE::Actor* target) {
+bool Utils::ParentCheck(const RE::TESIdleForm* idle, RE::Actor* actor, RE::TESObjectREFR* target) {
     return idle && EvalConditionsFiltered(idle->conditions, actor, target);
 }
 
 void Utils::CollectIdles(RE::TESIdleForm* parent_idle, std::vector<RE::TESIdleForm*>& out, RE::Actor* actor,
-    RE::Actor* target, std::unordered_set<RE::TESIdleForm*>& seen) {
+    RE::TESObjectREFR* target, std::unordered_set<RE::TESIdleForm*>& seen) {
     if (!parent_idle || !seen.emplace(parent_idle).second) {
         return;
     }
