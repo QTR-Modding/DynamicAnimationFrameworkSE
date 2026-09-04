@@ -17,14 +17,13 @@
 Meaning:  
 - events: [5] → ItemPickup  
 - forms: ["IronSword"] → the item (ID) you’re targeting  
-- animations: ["MyPickupIdle"] → animation event name to send (see Important note below)  
+- animations: ["MyPickupIdle"] → animation event name
 - priority: lower numbers override higher numbers
 
 Launch the game → log should show the folder and file were found.
 
 ---
-> ⚠️⚠️⚠️ Important ⚠️⚠️⚠️  
-> Idles (TESIdleForm/IDLE) are currently disabled. Please use animation event names.
+> The example above uses an animation event name. `animations` can also contain Skyrim IDLE records (`TESIdleForm`); see [Animation Chains](#7-animation-chains).
 
 ---
 
@@ -56,7 +55,7 @@ No arrays of multiple definitions. Just plain key/value pairs.
 |-----|-----------|------|----------|-------------|--------------|
 | `priority` | No; default `0` | `integer` | No | No | Lower numbers win when multiple presets match |
 | `events` | Yes | `integer[]` or `string` | No | No | Uses built-in event numbers `1–28` or one custom event name |
-| `animations` | Yes | `string[]` | No | No | Animation events played in order |
+| `animations` | Yes | `string[]` | No | No | Animation event names or Skyrim IDLE records played in order |
 | `variables` | No | `string[]` | No | No | Maps each animation to a [variable file](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Variables) by matching array position |
 | `durations` | No | `(integer or string)[]` | No | No | Sets each animation's duration in milliseconds by matching array position; names use [calculated durations](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Variables#calculate-a-duration) |
 | `forms` | No | `string[]` | Yes | Yes | Uses IDs to filter the Form supplied by the event |
@@ -67,7 +66,7 @@ No arrays of multiple definitions. Just plain key/value pairs.
 | `actor_keywords` | No | `string[]` | Yes | Yes | Uses IDs to filter keywords on the Actor's base NPC |
 | `conditions` | No | `string[]` | Yes | Yes | Uses Perk IDs whose conditions are evaluated with the Actor and event Form |
 | `attach_node` | No | `string` | No | No | The node in the Animation Object's NIF where the event Form's 3D model is attached |
-| `delay` | No | `boolean` or `integer` | No | No | `true` uses total durations; a positive integer sets milliseconds; otherwise no delay |
+| `delay` | No | `boolean` or `integer` | No | No | `true` sums fixed integer durations; a positive integer sets exact milliseconds; otherwise no delay |
 
 DAF can delay Activate, ItemAdd, ItemRemove, ItemDrop, ItemPickup, Buy, Sell, and menu-open actions. Other built-in events do not delay their underlying action. Custom events return the configured delay to the plugin that sent the event.
 
@@ -88,6 +87,8 @@ IDs written as strings can use any of these formats:
 
 These values are strings and must be written in quotes in JSON. You may mix these three formats within the same string array.
 
+IDLE animation entries use these same three formats.
+
 `actors` also accepts non-negative FormIDs as an integer array. Do not mix integers and strings within the same `actors` array.
 
 Fields marked `Yes` in the `Form Groups` column also accept a [Form Group](https://github.com/QTR-Modding/CLibUtilsQTR/wiki/Form-Groups) name. 
@@ -96,15 +97,6 @@ Every Form in the group must have the record type required by that field. For ex
 **Form Groups are stored in:**
 
 `Data/SKSE/Plugins/DAF/formGroups`
-
-**Implementation detail:**
-
-The [event table](#6-events-builtin--custom) shows the Actor and Form supplied by each event:
-
-- **Actor:** the Actor reference that plays the animation.
-- **Form:** the object related to the event and checked by `forms`, `form_types`, and `keywords`.
-
-If the Form is a placed or runtime reference, those filters check its base record instead. For example, picking up a placed Iron Sword checks the `IronSword` weapon record.
 
 ---
 
@@ -145,6 +137,14 @@ You can declare:
 | 27 | MagicEffectCast | Effect caster | Magic Effect (MGEF) |
 | 28 | MagicEffectTarget | Effect target | Magic Effect (MGEF) |
 
+The table shows what each event gives DAF:
+
+- **Actor:** the Actor that plays the animation. When conditions are evaluated, this is called the **Subject**.
+- **Form:** the related object used by the `forms`, `form_types`, and `keywords` filters.
+- **Target:** the original Form when it is a reference, such as the object being activated. Some IDLEs and variable calculations use it.
+
+When Form is a reference, Form filters check its base record. For example, picking up a placed Iron Sword checks the `IronSword` weapon record.
+
 For custom events, the sending plugin supplies the Actor and Form through the [DAF API](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/API-Guide).
 
 <u>**Examples**</u>
@@ -172,17 +172,48 @@ Example:
 Rules:
 - Each duration corresponds to the animation at the same array position.
 - If an animation has no matching duration, its duration is `0`.
-- `durations` is optional and contains milliseconds.
-- Extra durations do not correspond to an animation, but are still included when `"delay": true` calculates the total delay.
+- `durations` is optional. Each entry can be a fixed duration in milliseconds or the name of a [calculated duration](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Variables#calculate-a-duration) from that animation's variable file.
+- `durations` may be shorter than `animations`, but not longer.
 - Leave durations out entirely if you don't care about timing.
-- IDLE Form support is currently disabled.
-- Each animation entry is treated as an animation event name (idles disabled).
+- An animation event name is a name recognized by Skyrim's behavior files.
+- An IDLE record is a Skyrim Form that points to an animation and may contain conditions or child IDLEs.
+- DAF first tries to resolve the entry as an IDLE. If it does not resolve, DAF sends it as an animation event name.
 
-Simple:
+Simple animation event:
 ```json
 "animations": ["MyPickupIdle"]
 ```
 
+IDLE record:
+```json
+"animations": ["0x1234~MyMod.esp"]
+```
+
+## IDLE containers
+
+Some IDLE records contain several possible animations. DAF checks them immediately before playback and randomly chooses one playable animation whose conditions pass.
+
+If no valid playable child exists, that animation entry is skipped.
+
+## Paired IDLE animations
+
+DAF automatically passes the event Target to Skyrim when it plays an IDLE.
+
+There is **no separate `paired` JSON flag**.
+
+For example, with Activate:
+
+```json
+{
+  "events": [1],
+  "animations": ["MyPairedIdle"],
+  "actors": ["0x14~Skyrim.esm"]
+}
+```
+
+the activating Actor plays the IDLE and the activated object is its Target.
+
+A paired IDLE therefore needs an event that supplies a reference Target. If an event supplies only a base Form, or no Form, there is no Target to pass to Skyrim.
 
 ---
 
@@ -313,9 +344,11 @@ animData/MyMod/
 | Folder skipped | Special characters in folder name | Use letters, numbers, underscores only |
 | Not listed in log | Wrong extension | Must be .json |
 | Animation not playing | Filters too strict / wrong event | Temporarily remove filters & test |
+| IDLE not playing | ID does not resolve, its conditions fail, or a container has no valid animation | Check the ID and DAF log |
+| Paired IDLE does not pair | Event did not supply a Target reference | Use an event such as Activate |
 | ID not found | Typo or format issue | Re-check IDs |
 | Wrong definition chosen | Priority misunderstanding | Lower number wins |
-| delay true returns 0 | All durations are 0 | Use a number or add durations |
+| delay true returns 0 | There are no positive fixed integer durations | Set `delay` to a positive integer or add fixed durations |
 | Custom event unused | Not triggered | Other mod must send it |
 | Nothing happens on pickup/activate | Target ref disabled/deleted | Ensure the reference is valid/alive |
 
@@ -327,10 +360,12 @@ animData/MyMod/
 - [ ] Folder name contains only letters/numbers/underscores (no special chars)
 - [ ] events set (numbers or one custom name)
 - [ ] animations list not empty
-- [ ] durations (if present) are in milliseconds and correspond to animations by array position
+- [ ] each animation is a valid animation event name or IDLE record
+- [ ] durations (if present) are in milliseconds / calculated-duration names and correspond to animations by array position
 - [ ] IDs valid where used
 - [ ] priority chosen (lower = stronger)
 - [ ] delay correct (or omitted)
+- [ ] paired IDLEs use an event that supplies a Target
 - [ ] Only ONE custom event string if using custom event
 
 ---

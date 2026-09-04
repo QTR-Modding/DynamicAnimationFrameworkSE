@@ -113,6 +113,7 @@ These are all supported fields:
 | --- | --- |
 | `value` | Value to use. Required in object form. |
 | `type` | Graph type: `0` Boolean, `1` Integer, `2` Float. Without it, this is a helper. |
+| `target` | Boolean; default `false`. When `true`, swaps the animation Actor and event Target while evaluating this definition; see [Swap Actor and Target](#swap-actor-and-target). |
 | `conditions` | Earlier definitions or Perks that choose between `value` and `else`. |
 | `else` | Used when `conditions` fail. Default: `0`. |
 | `post` | Changes `value` after it is found. |
@@ -134,6 +135,7 @@ A bare Boolean or number, such as `"baseSpeed": 1.5`, is helper shorthand.
 `durationMs` is the helper defined in `take.json` above. It is evaluated
 immediately before `Take` plays. It can use everything described below,
 including conditions, globals, condition functions, graph reads, and `post`.
+
 The result is rounded to the nearest millisecond.
 
 An omitted duration, an empty definition name, or no variable file mapped to
@@ -141,8 +143,9 @@ that animation uses `0`. A missing definition in a mapped file rejects the confi
 If an existing definition cannot be calculated, is negative, or is too large,
 that animation is skipped.
 
-`delay: true` can total only durations written directly as numbers. If any
-duration is calculated from a variable file, set `delay` to a number instead.
+`delay: true` sums only fixed integer durations. Calculated durations are not
+included. When using calculated durations, set `delay` to an explicit integer
+instead.
 
 ## Choose a value
 
@@ -196,9 +199,9 @@ Each condition can be an earlier definition or a Perk Form identifier:
 - `post` changes only `value`, not `else`.
 
 Referenced definitions are calculated on demand and must be written earlier in
-the same file. If one cannot be calculated, DAF skips the animation. Perk
-conditions receive the animation actor as Subject and the event reference as
-Target when the event has one.
+the same file. If one cannot be calculated, DAF skips the animation.
+
+Perk conditions use the animation Actor and the event Target, when available.
 
 To apply `post` to both paths, make the choice in a helper:
 
@@ -321,8 +324,9 @@ each function does and which parameters it takes.
 [CommunityFunctionsSE](https://github.com/QTR-Modding/CommunityFunctionsSE)
 lists community function IDs. Its range is `1000` through `9999`.
 
-DAF always supplies the animation actor as Subject. Target is the event
-reference, such as the item being picked up, when the event supplies one.
+A condition function receives a **Subject** (the object it runs on) and may also
+receive a **Target**. By default, DAF uses the animation Actor as Subject and the
+reference supplied by the event as Target, when available.
 
 Events that remove their reference, such as item pickup, can lose Target before
 the animation runs. If a condition function needs it, use a numeric `delay` in
@@ -379,12 +383,42 @@ Supported functions and arguments:
 If a condition function cannot return a value, DAF skips the animation. It does
 not use `else`; `else` is only for failed `conditions`.
 
+## Swap Actor and Target
+
+`target` changes the Subject and Target used by one definition:
+
+| | Default | With `"target": true` |
+| --- | --- | --- |
+| Subject | Animation Actor | Event Target |
+| Target | Event Target | Animation Actor |
+
+For example:
+
+```json
+{
+  "targetScale": {
+    "value": [24],
+    "target": true
+  }
+}
+```
+
+`[24]` is `GetScale()`, so this reads the Target's scale instead of the Actor's scale.
+
+The swap applies to that definition's conditions, function calls, graph reads,
+and graph writes.
+
+If the event has no Target, the definition fails and DAF skips that animation.
+Each referenced definition uses its own `target` setting.
+
 ## When something goes wrong
 
 - If a named variable file is missing or invalid, its animation config does not
   load.
 - DAF calculates a named duration and every graph variable value before writing.
   If a calculation fails, nothing changes and the animation is skipped.
+- A swapped graph read/write fails if the event Target does not have the
+  requested animation graph variable.
 - DAF then writes in file order. If a later write fails, earlier changes remain.
   The animation is still skipped.
 - The next queued animation still runs.
