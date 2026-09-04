@@ -17,14 +17,13 @@
 Meaning:  
 - events: [5] → ItemPickup  
 - forms: ["IronSword"] → the item (ID) you’re targeting  
-- animations: ["MyPickupIdle"] → animation event name or TESIdleForm identifier  
+- animations: ["MyPickupIdle"] → animation event name
 - priority: lower numbers override higher numbers
 
 Launch the game → log should show the folder and file were found.
 
 ---
-> **Animation entries can be either animation event names or `TESIdleForm` (`IDLE`) identifiers.**  
-> A TESIdleForm can be written using a plugin-local FormID, full FormID, or Editor ID. If the IDLE is a root/container with child IDLEs, DAF resolves a currently valid playable child at runtime.
+> The example above uses an animation event name. `animations` can also contain Skyrim IDLE records (`TESIdleForm`); see [Animation Chains](#7-animation-chains).
 
 ---
 
@@ -56,7 +55,7 @@ No arrays of multiple definitions. Just plain key/value pairs.
 |-----|-----------|------|----------|-------------|--------------|
 | `priority` | No; default `0` | `integer` | No | No | Lower numbers win when multiple presets match |
 | `events` | Yes | `integer[]` or `string` | No | No | Uses built-in event numbers `1–28` or one custom event name |
-| `animations` | Yes | `string[]` | No | No | Animation events or TESIdleForm identifiers played in order |
+| `animations` | Yes | `string[]` | No | No | Animation event names or Skyrim IDLE records played in order |
 | `variables` | No | `string[]` | No | No | Maps each animation to a [variable file](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Variables) by matching array position |
 | `durations` | No | `(integer or string)[]` | No | No | Sets each animation's duration in milliseconds by matching array position; names use [calculated durations](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Variables#calculate-a-duration) |
 | `forms` | No | `string[]` | Yes | Yes | Uses IDs to filter the Form supplied by the event |
@@ -88,7 +87,7 @@ IDs written as strings can use any of these formats:
 
 These values are strings and must be written in quotes in JSON. You may mix these three formats within the same string array.
 
-`animations` also uses these formats when an entry resolves to a `TESIdleForm`. If an animation string does not resolve to a TESIdleForm, DAF treats it as an animation event name.
+IDLE animation entries use these same three formats.
 
 `actors` also accepts non-negative FormIDs as an integer array. Do not mix integers and strings within the same `actors` array.
 
@@ -98,17 +97,6 @@ Every Form in the group must have the record type required by that field. For ex
 **Form Groups are stored in:**
 
 `Data/SKSE/Plugins/DAF/formGroups`
-
-**Implementation detail:**
-
-The [event table](#6-events-builtin--custom) shows the Actor and Form supplied by each event:
-
-- **Actor:** the Actor reference that plays the animation.
-- **Form:** the object related to the event and checked by `forms`, `form_types`, and `keywords`.
-
-If the Form is a placed or runtime reference, those filters check its base record instead. For example, picking up a placed Iron Sword checks the `IronSword` weapon record.
-
-When the supplied Form is a reference, DAF also keeps that original reference as the event **Target**. It is used by TESIdle playback and by [variable definitions](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Variables) that need Subject/Target context.
 
 ---
 
@@ -149,6 +137,14 @@ You can declare:
 | 27 | MagicEffectCast | Effect caster | Magic Effect (MGEF) |
 | 28 | MagicEffectTarget | Effect target | Magic Effect (MGEF) |
 
+The table shows what each event gives DAF:
+
+- **Actor:** the Actor that plays the animation. When conditions are evaluated, this is called the **Subject**.
+- **Form:** the related object used by the `forms`, `form_types`, and `keywords` filters.
+- **Target:** the original Form when it is a reference, such as the object being activated. Some IDLEs and variable calculations use it.
+
+When Form is a reference, Form filters check its base record. For example, picking up a placed Iron Sword checks the `IronSword` weapon record.
+
 For custom events, the sending plugin supplies the Actor and Form through the [DAF API](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/API-Guide).
 
 <u>**Examples**</u>
@@ -179,36 +175,29 @@ Rules:
 - `durations` is optional and contains milliseconds or calculated-duration definition names.
 - Extra durations do not correspond to an animation, but are still included when `"delay": true` calculates the total delay.
 - Leave durations out entirely if you don't care about timing.
-- Each animation entry is first checked as a TESIdleForm identifier. If it resolves to an IDLE, DAF plays the IDLE; otherwise DAF sends the string as an animation event name.
+- An animation event name is a name recognized by Skyrim's behavior files.
+- An IDLE record is a Skyrim Form that points to an animation and may contain conditions or child IDLEs.
+- DAF first tries to resolve the entry as an IDLE. If it does not resolve, DAF sends it as an animation event name.
 
 Simple animation event:
 ```json
 "animations": ["MyPickupIdle"]
 ```
 
-TESIdleForm:
+IDLE record:
 ```json
 "animations": ["0x1234~MyMod.esp"]
 ```
 
-## TESIdle roots / containers
+## IDLE containers
 
-If a TESIdleForm has child IDLEs, DAF treats it as a root/container rather than blindly playing the root.
+Some IDLE records contain several possible animations. DAF checks them immediately before playback and randomly chooses one playable animation whose conditions pass.
 
-Immediately before playback DAF:
-1. checks the root's conditions,
-2. traverses its child/previous-IDLE structure,
-3. checks descendant conditions,
-4. keeps playable leaf IDLEs, and
-5. randomly picks one valid candidate.
+If no valid playable child exists, that animation entry is skipped.
 
-This lets a vanilla or custom IDLE tree choose among condition-valid animations at runtime.
+## Paired IDLE animations
 
-If no valid playable leaf exists, that animation entry is skipped.
-
-## Paired TESIdle animations
-
-DAF automatically passes the event Target reference to Skyrim when it plays a TESIdleForm.
+DAF automatically passes the event Target to Skyrim when it plays an IDLE. Target means the reference supplied by the event, as explained in the [event table](#6-events-builtin--custom).
 
 There is **no separate `paired` JSON flag**.
 
@@ -222,9 +211,9 @@ For example, with Activate:
 }
 ```
 
-the activating Actor plays the IDLE and the activated reference is supplied as the IDLE Target.
+the activating Actor plays the IDLE and the activated object is its Target.
 
-A paired IDLE therefore needs an event that actually supplies a reference Target. If the event supplies only a base Form, or no Form at all, there is no reference Target to pass to Skyrim.
+A paired IDLE therefore needs an event that supplies a reference Target. If an event supplies only a base Form, or no Form, there is no Target to pass to Skyrim.
 
 ---
 
@@ -302,16 +291,6 @@ Custom event:
 }
 ```
 
-TESIdle:
-```json
-{
-  "priority": 5,
-  "events": [1],
-  "animations": ["0x1234~MyMod.esp"],
-  "actors": ["0x14~Skyrim.esm"]
-}
-```
-
 Negation:
 ```json
 {
@@ -365,8 +344,8 @@ animData/MyMod/
 | Folder skipped | Special characters in folder name | Use letters, numbers, underscores only |
 | Not listed in log | Wrong extension | Must be .json |
 | Animation not playing | Filters too strict / wrong event | Temporarily remove filters & test |
-| TESIdle not playing | ID does not resolve, conditions fail, or a root has no valid playable leaf | Check the IDLE ID/EditorID and DAF trace log |
-| Paired TESIdle does not pair | Event did not supply a reference Target, or Skyrim rejected the IDLE | Test with an event such as Activate that supplies a reference |
+| IDLE not playing | ID does not resolve, its conditions fail, or a container has no valid animation | Check the ID and DAF log |
+| Paired IDLE does not pair | Event did not supply a Target reference | Use an event such as Activate |
 | ID not found | Typo or format issue | Re-check IDs |
 | Wrong definition chosen | Priority misunderstanding | Lower number wins |
 | delay true returns 0 | All durations are 0 | Use a number or add durations |
@@ -381,12 +360,12 @@ animData/MyMod/
 - [ ] Folder name contains only letters/numbers/underscores (no special chars)
 - [ ] events set (numbers or one custom name)
 - [ ] animations list not empty
-- [ ] each animation is a valid animation event name or TESIdleForm identifier
+- [ ] each animation is a valid animation event name or IDLE record
 - [ ] durations (if present) are in milliseconds / calculated-duration names and correspond to animations by array position
 - [ ] IDs valid where used
 - [ ] priority chosen (lower = stronger)
 - [ ] delay correct (or omitted)
-- [ ] paired IDLEs use an event that supplies a reference Target
+- [ ] paired IDLEs use an event that supplies a Target
 - [ ] Only ONE custom event string if using custom event
 
 ---
@@ -400,15 +379,6 @@ Standard:
   "events": [EVENT_NUMBER],
   "animations": ["YourAnimEventName"],
   "forms": ["IronSword"]
-}
-```
-
-TESIdle:
-```json
-{
-  "priority": 20,
-  "events": [EVENT_NUMBER],
-  "animations": ["0x1234~YourMod.esp"]
 }
 ```
 
