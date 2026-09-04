@@ -66,7 +66,7 @@ No arrays of multiple definitions. Just plain key/value pairs.
 | `actor_keywords` | No | `string[]` | Yes | Yes | Uses IDs to filter keywords on the Actor's base NPC |
 | `conditions` | No | `string[]` | Yes | Yes | Uses Perk IDs whose conditions are evaluated with the Actor and event Form |
 | `attach_node` | No | `string` | No | No | The node in the Animation Object's NIF where the event Form's 3D model is attached |
-| `delay` | No | `boolean` or `integer` | No | No | `true` uses total durations; a positive integer sets milliseconds; otherwise no delay |
+| `delay` | No | `boolean` or `integer` | No | No | `true` sums fixed integer durations; a positive integer sets exact milliseconds; otherwise no delay |
 
 DAF can delay Activate, ItemAdd, ItemRemove, ItemDrop, ItemPickup, Buy, Sell, and menu-open actions. Other built-in events do not delay their underlying action. Custom events return the configured delay to the plugin that sent the event.
 
@@ -173,7 +173,7 @@ Rules:
 - Each duration corresponds to the animation at the same array position.
 - If an animation has no matching duration, its duration is `0`.
 - `durations` is optional. Each entry can be a fixed duration in milliseconds or the name of a [calculated duration](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Variables#calculate-a-duration) from that animation's variable file.
-- Extra durations do not correspond to an animation, but are still included when `"delay": true` calculates the total delay.
+- `durations` may be shorter than `animations`, but not longer.
 - Leave durations out entirely if you don't care about timing.
 - An animation event name is a name recognized by Skyrim's behavior files.
 - An IDLE record is a Skyrim Form that points to an animation and may contain conditions or child IDLEs.
@@ -348,7 +348,7 @@ animData/MyMod/
 | Paired IDLE does not pair | Event did not supply a Target reference | Use an event such as Activate |
 | ID not found | Typo or format issue | Re-check IDs |
 | Wrong definition chosen | Priority misunderstanding | Lower number wins |
-| delay true returns 0 | All durations are 0 | Use a number or add durations |
+| delay true returns 0 | There are no positive fixed integer durations | Set `delay` to a positive integer or add fixed durations |
 | Custom event unused | Not triggered | Other mod must send it |
 | Nothing happens on pickup/activate | Target ref disabled/deleted | Ensure the reference is valid/alive |
 

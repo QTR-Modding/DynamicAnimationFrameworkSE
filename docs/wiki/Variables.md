@@ -143,8 +143,9 @@ that animation uses `0`. A missing definition in a mapped file rejects the confi
 If an existing definition cannot be calculated, is negative, or is too large,
 that animation is skipped.
 
-`delay: true` can total only durations written directly as numbers. If any
-duration is calculated from a variable file, set `delay` to a number instead.
+`delay: true` sums only fixed integer durations. Calculated durations are not
+included. When using calculated durations, set `delay` to an explicit integer
+instead.
 
 ## Choose a value
 
