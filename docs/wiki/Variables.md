@@ -113,7 +113,7 @@ These are all supported fields:
 | --- | --- |
 | `value` | Value to use. Required in object form. |
 | `type` | Graph type: `0` Boolean, `1` Integer, `2` Float. Without it, this is a helper. |
-| `target` | Boolean; default `false`. Uses the reference supplied by the event instead of the animation Actor; see [Use the event Target](#use-the-event-target). |
+| `target` | Boolean; default `false`. When `true`, swaps the animation Actor and event Target while evaluating this definition; see [Swap Actor and Target](#swap-actor-and-target). |
 | `conditions` | Earlier definitions or Perks that choose between `value` and `else`. |
 | `else` | Used when `conditions` fail. Default: `0`. |
 | `post` | Changes `value` after it is found. |
@@ -200,7 +200,7 @@ Each condition can be an earlier definition or a Perk Form identifier:
 Referenced definitions are calculated on demand and must be written earlier in
 the same file. If one cannot be calculated, DAF skips the animation.
 
-Perk conditions use the animation Actor and the event Target.
+Perk conditions use the animation Actor and the event Target, when available.
 
 To apply `post` to both paths, make the choice in a helper:
 
@@ -323,8 +323,9 @@ each function does and which parameters it takes.
 [CommunityFunctionsSE](https://github.com/QTR-Modding/CommunityFunctionsSE)
 lists community function IDs. Its range is `1000` through `9999`.
 
-Condition functions call the object being checked the **Subject**. Normally DAF
-uses the animation Actor as Subject and the event reference as Target.
+A condition function receives a **Subject** (the object it runs on) and may also
+receive a **Target**. By default, DAF uses the animation Actor as Subject and the
+reference supplied by the event as Target, when available.
 
 Events that remove their reference, such as item pickup, can lose Target before
 the animation runs. If a condition function needs it, use a numeric `delay` in
@@ -381,11 +382,16 @@ Supported functions and arguments:
 If a condition function cannot return a value, DAF skips the animation. It does
 not use `else`; `else` is only for failed `conditions`.
 
-## Use the event Target
+## Swap Actor and Target
 
-Every animation has an **Actor**: the Actor playing it. Some events also provide a **Target** reference, such as the object being activated or picked up.
+`target` changes the Subject and Target used by one definition:
 
-Add `"target": true` to make one definition use the event Target instead of the animation Actor:
+| | Default | With `"target": true` |
+| --- | --- | --- |
+| Subject | Animation Actor | Event Target |
+| Target | Event Target | Animation Actor |
+
+For example:
 
 ```json
 {
@@ -398,9 +404,11 @@ Add `"target": true` to make one definition use the event Target instead of the 
 
 `[24]` is `GetScale()`, so this reads the Target's scale instead of the Actor's scale.
 
-The swap applies to that definition's conditions, function calls, graph reads, and graph writes. For condition functions, the event reference becomes Subject and the animation Actor becomes Target.
+The swap applies to that definition's conditions, function calls, graph reads,
+and graph writes.
 
-If the event has no Target, the definition fails and DAF skips that animation. A referenced definition uses its own `target` setting.
+If the event has no Target, the definition fails and DAF skips that animation.
+Each referenced definition uses its own `target` setting.
 
 ## When something goes wrong
 
@@ -408,7 +416,6 @@ If the event has no Target, the definition fails and DAF skips that animation. A
   load.
 - DAF calculates a named duration and every graph variable value before writing.
   If a calculation fails, nothing changes and the animation is skipped.
-- A `target: true` definition fails if the event Target is unavailable.
 - A swapped graph read/write fails if the event Target does not have the
   requested animation graph variable.
 - DAF then writes in file order. If a later write fails, earlier changes remain.

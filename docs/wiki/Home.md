@@ -4,6 +4,6 @@ You add simple JSON files that say: “When event X happens, and the item / acto
 
 Animation entries can use either an animation event name or a Skyrim IDLE record. The [Preset Creation Guide](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Preset-Creation-Guide) explains both.
 
-Other mods also have the option to register their custom events with DAF.
+Mods can also define custom events in JSON and trigger them through the [DAF API](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/API-Guide#typical-workflow-custom-event-example).
 
 No Papyrus or coding required.

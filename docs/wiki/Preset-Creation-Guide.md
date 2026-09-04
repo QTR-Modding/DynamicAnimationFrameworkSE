@@ -172,7 +172,7 @@ Example:
 Rules:
 - Each duration corresponds to the animation at the same array position.
 - If an animation has no matching duration, its duration is `0`.
-- `durations` is optional and contains milliseconds or calculated-duration definition names.
+- `durations` is optional. Each entry can be a fixed duration in milliseconds or the name of a [calculated duration](https://github.com/QTR-Modding/DynamicAnimationFrameworkSE/wiki/Variables#calculate-a-duration) from that animation's variable file.
 - Extra durations do not correspond to an animation, but are still included when `"delay": true` calculates the total delay.
 - Leave durations out entirely if you don't care about timing.
 - An animation event name is a name recognized by Skyrim's behavior files.
@@ -197,7 +197,7 @@ If no valid playable child exists, that animation entry is skipped.
 
 ## Paired IDLE animations
 
-DAF automatically passes the event Target to Skyrim when it plays an IDLE. Target means the reference supplied by the event, as explained in the [event table](#6-events-builtin--custom).
+DAF automatically passes the event Target to Skyrim when it plays an IDLE.
 
 There is **no separate `paired` JSON flag**.
 
