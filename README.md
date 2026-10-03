@@ -2,7 +2,7 @@
 
 #### WINDOWS ENVIRONMENT VARIABLES TO SET
 
-1. **`COMMONLIB_SSE_FOLDER`**: The path to your clone of Commonlib. This plugin was built with alandtse's fork.
+1. **`COMMONLIB_SSE_FOLDER`**: The path to your clone of [CommonLibVR-MIT](https://github.com/QTR-Modding/CommonLibVR-MIT). For Skyrim 1.7.x, use [commit `800eeae`](https://github.com/QTR-Modding/CommonLibVR-MIT/commit/800eeae864eef097cfcec184c57435b18dcc4761) or later and rebuild DAF.
 2. **`VCPKG_ROOT`**: The path to your clone of [vcpkg](https://github.com/microsoft/vcpkg).
 3. (optional) **`SKYRIM_FOLDER`**: path of your Skyrim Special Edition folder.
 4. (optional) **`SKYRIM_MODS_FOLDER`**: path of the folder where your mods are.
