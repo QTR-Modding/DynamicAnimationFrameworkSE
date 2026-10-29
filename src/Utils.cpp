@@ -117,9 +117,7 @@ bool Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) 
                 if (model && model->numAlternateTextures) {
                     // Keep texture changes off the shared model in BSModelDB.
                     a_out.reset(static_cast<RE::NiAVObject*>(constructedObject->Clone()));
-                    using func_t = void (*)(RE::TESModelTextureSwap*, RE::NiAVObject*);
-                    static const REL::Relocation<func_t> applyTextures{REL::VariantID(14657, 14837, 0x1AB7D0)};
-                    applyTextures(model, a_out.get());
+                    model->ApplyAlternateTextures(a_out.get());
                 }
                 return static_cast<bool>(a_out);
             }
