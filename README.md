@@ -2,7 +2,7 @@
 
 #### WINDOWS ENVIRONMENT VARIABLES TO SET
 
-1. **`COMMONLIB_SSE_FOLDER`**: The path to your clone of [CommonLibVR-MIT](https://github.com/QTR-Modding/CommonLibVR-MIT). Use [commit `c8d8874`](https://github.com/QTR-Modding/CommonLibVR-MIT/commit/c8d8874e33154807896bb9158de26ace76ea891f) or later for the alternate-texture API.
+1. **`COMMONLIB_SSE_FOLDER`**: The path to your clone of [CommonLibVR-MIT](https://github.com/QTR-Modding/CommonLibVR-MIT). Use [commit `c8d8874`](https://github.com/QTR-Modding/CommonLibVR-MIT/commit/c8d8874e33154807896bb9158de26ace76ea891f) or later to build DAF.
 2. **`VCPKG_ROOT`**: The path to your clone of [vcpkg](https://github.com/microsoft/vcpkg).
 3. (optional) **`SKYRIM_FOLDER`**: path of your Skyrim Special Edition folder.
 4. (optional) **`SKYRIM_MODS_FOLDER`**: path of the folder where your mods are.
