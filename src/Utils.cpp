@@ -110,7 +110,18 @@ bool Utils::GetModel(RE::TESForm* a_form, RE::NiPointer<RE::NiAVObject>& a_out) 
             res == RE::BSResource::ErrorCode::kNone) {
             if (RE::NiAVObject* constructedObject = a_model && a_model.get() ? a_model.get() : nullptr) {
                 a_out.reset(constructedObject);
-                return true;
+                const auto ref = a_form->AsReference();
+                const auto form = ref ? ref->GetBaseObject() : a_form;
+                const auto armor = form->As<RE::TESObjectARMO>();
+                const auto model = armor ? armor->worldModels : form->As<RE::TESModelTextureSwap>();
+                if (model && model->numAlternateTextures) {
+                    // Keep texture changes off the shared model in BSModelDB.
+                    a_out.reset(static_cast<RE::NiAVObject*>(constructedObject->Clone()));
+                    using func_t = void (*)(RE::TESModelTextureSwap*, RE::NiAVObject*);
+                    static const REL::Relocation<func_t> applyTextures{REL::VariantID(14657, 14837, 0x1AB7D0)};
+                    applyTextures(model, a_out.get());
+                }
+                return static_cast<bool>(a_out);
             }
         } else {
             logger::warn("Failed to load model for form {:x}: {}. Error: {}", a_form->GetFormID(), model_path,
