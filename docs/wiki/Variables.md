@@ -316,7 +316,7 @@ Use `[functionID, arguments...]` to get a condition-function result:
 ```
 
 The first number is the function ID. Find Skyrim function IDs in CommonLib's
-[FunctionID list](https://github.com/QTR-Modding/CommonLibVR-MIT/blob/4190ec291f99c64b765c0647e25cf8a3a3d9a550/include/RE/T/TESCondition.h#L33).
+[FunctionID list](https://github.com/CharmedBaryon/CommonLibSSE-NG/blob/main/include/RE/T/TESCondition.h#L32).
 For example, `kGetScale = 24`. The
 [Creation Kit list](https://ck.uesp.net/wiki/Condition_Functions) explains what
 each function does and which parameters it takes.
