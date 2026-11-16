@@ -187,8 +187,11 @@ bool Presets::AnimData::TryLoad(AnimDataBlock& a_block,
     std::size_t i = 0;
     for (const auto& name : names) {
         RE::TESIdleForm* a_idle = nullptr;
-        if (const auto idle_formid = FormReader::GetFormEditorIDFromString(name); idle_formid > 0) {
-            a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(idle_formid);
+        if (name.contains('~')) {
+            a_idle = RE::TESForm::LookupByID<RE::TESIdleForm>(FormReader::GetFormEditorIDFromString(name));
+            if (!a_idle) {
+                return false;
+            }
         }
         auto duration = decltype(Animation::t_wait_ms){};
         if (i < durations.size()) {
