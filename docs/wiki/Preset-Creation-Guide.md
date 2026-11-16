@@ -87,7 +87,7 @@ IDs written as strings can use any of these formats:
 
 These values are strings and must be written in quotes in JSON. You may mix these three formats within the same string array.
 
-IDLE animation entries use these same three formats.
+Use the plugin-local format for IDLE records in `animations`.
 
 `actors` also accepts non-negative FormIDs as an integer array. Do not mix integers and strings within the same `actors` array.
 
@@ -177,7 +177,7 @@ Rules:
 - Leave durations out entirely if you don't care about timing.
 - An animation event name is a name recognized by Skyrim's behavior files.
 - An IDLE record is a Skyrim Form that points to an animation and may contain conditions or child IDLEs.
-- DAF first tries to resolve the entry as an IDLE. If it does not resolve, DAF sends it as an animation event name.
+- Use a bare name to send an animation event. Use `FormID~Plugin` to play an IDLE record.
 
 Simple animation event:
 ```json
@@ -206,7 +206,7 @@ For example, with Activate:
 ```json
 {
   "events": [1],
-  "animations": ["MyPairedIdle"],
+  "animations": ["0x1234~MyMod.esp"],
   "actors": ["0x14~Skyrim.esm"]
 }
 ```
