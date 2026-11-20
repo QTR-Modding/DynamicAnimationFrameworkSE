@@ -1,7 +1,9 @@
 #pragma once
+#include <mutex>
 #include <unordered_set>
 
 namespace Utils {
+    inline std::mutex menu_blocks_mutex;
     inline std::map<std::string_view, bool> menu_blocks = {
         {RE::InventoryMenu::MENU_NAME, true},
         {RE::ContainerMenu::MENU_NAME, true},
@@ -10,8 +12,11 @@ namespace Utils {
 
     template <typename MenuType>
     RE::StandardItemData* GetSelectedItemData() {
-        if (menu_blocks.contains(MenuType::MENU_NAME) && menu_blocks.at(MenuType::MENU_NAME)) {
-            return nullptr;
+        {
+            std::scoped_lock lock(menu_blocks_mutex);
+            if (const auto a_block = menu_blocks.find(MenuType::MENU_NAME); a_block != menu_blocks.end() && a_block->second) {
+                return nullptr;
+            }
         }
         if (const auto ui = RE::UI::GetSingleton()) {
             if (const auto menu = ui->GetMenu<MenuType>()) {
