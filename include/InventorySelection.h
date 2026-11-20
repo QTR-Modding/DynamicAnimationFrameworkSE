@@ -11,7 +11,6 @@ namespace Hooks {
     class InventorySelection {
     public:
         struct Resolved {
-            RE::NiPointer<RE::TESObjectREFR> source;
             RE::TESBoundObject* item;
             RE::ExtraDataList* extra_list;
             std::int32_t count;
@@ -19,12 +18,11 @@ namespace Hooks {
 
         [[nodiscard]] static bool Install();
         [[nodiscard]] static std::optional<InventorySelection> Capture(
-            RE::TESObjectREFR& a_source, const RE::TESBoundObject& a_item,
-            RE::ExtraDataList* a_extra_list, std::int32_t a_count);
+            const RE::TESBoundObject& a_item, RE::ExtraDataList* a_extra_list, std::int32_t a_count);
         [[nodiscard]] static std::optional<InventorySelection> Capture(
             const RE::InventoryEntryData& a_entry, std::int32_t a_count, RE::TESObjectREFR* a_source);
 
-        [[nodiscard]] std::optional<Resolved> ResolveDrop() const;
+        [[nodiscard]] std::optional<Resolved> ResolveDrop(RE::PlayerCharacter& a_player) const;
         [[nodiscard]] bool ValidateSources() const;
         [[nodiscard]] bool Matches(const RE::InventoryEntryData& a_entry) const;
 
@@ -51,7 +49,7 @@ namespace Hooks {
             std::int32_t count;
         };
 
-        InventorySelection(RE::ObjectRefHandle a_source, RE::FormID a_form_id, std::int32_t a_count,
+        InventorySelection(RE::FormID a_form_id, std::int32_t a_count,
                            std::vector<StackSelection> a_stacks);
 
         [[nodiscard]] static bool HasItems(RE::TESObjectREFR& a_source, RE::TESBoundObject& a_item,
@@ -64,7 +62,6 @@ namespace Hooks {
         static inline std::mutex stack_watches_lock;
         static inline std::unordered_map<RE::ExtraDataList*, std::weak_ptr<StackWatch>> stack_watches;
 
-        RE::ObjectRefHandle source;
         RE::FormID form_id;
         std::int32_t count;
         std::vector<StackSelection> stacks;

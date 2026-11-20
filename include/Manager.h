@@ -48,7 +48,6 @@ public:
 
     void SetMenuQueued(std::string_view menu_name, bool for_open);
     void UnSetMenuQueued(std::string_view menu_name);
-    [[nodiscard]] bool IsMenuQueued(std::string_view menu_name) const;
     [[nodiscard]] bool IsMenuQueued(std::string_view menu_name, bool for_open) const;
     static void OpenCloseMenu(std::string_view menu_name, bool open);
 

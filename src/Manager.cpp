@@ -159,10 +159,6 @@ void Manager::UnSetMenuQueued(const std::string_view menu_name) {
     queued_menus.erase(menu_name);
 }
 
-bool Manager::IsMenuQueued(const std::string_view menu_name) const {
-    return queued_menus.contains(menu_name);
-}
-
 bool Manager::IsMenuQueued(const std::string_view menu_name, const bool for_open) const {
     return queued_menus.contains(menu_name) && queued_menus.at(menu_name) == for_open;
 }
@@ -388,10 +384,9 @@ std::uintptr_t Hooks::PlayerInteraction::GetHookedActivation(const RE::TESBoundO
     const std::uintptr_t* a_vtable;
     std::memcpy(&a_vtable, &a_base, sizeof(a_vtable));
     const auto a_slot = a_vtable[activate_vfunc_slot];
-    return [a_vtable, a_slot]<class... Forms>(std::tuple<Forms*...>*) {
+    return [a_slot]<class... Forms>(std::tuple<Forms*...>*) {
         std::uintptr_t a_original = 0;
-        ((reinterpret_cast<std::uintptr_t>(a_vtable) == REL::Relocation<std::uintptr_t>{Forms::VTABLE[0]}.address() &&
-          (a_original = ActivateHook<Forms>::GetOriginalAddress(a_slot)) != 0) || ...);
+        (((a_original = ActivateHook<Forms>::GetOriginalAddress(a_slot)) != 0) || ...);
         return a_original;
     }(static_cast<ActivationForms*>(nullptr));
 }

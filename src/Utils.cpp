@@ -229,9 +229,9 @@ Hooks::InventorySelection::StackWatch::~StackWatch() {
     }
 }
 
-Hooks::InventorySelection::InventorySelection(RE::ObjectRefHandle a_source, RE::FormID a_form_id,
-                                              std::int32_t a_count, std::vector<StackSelection> a_stacks) :
-    source(a_source), form_id(a_form_id), count(a_count), stacks(std::move(a_stacks)) {}
+Hooks::InventorySelection::InventorySelection(RE::FormID a_form_id, std::int32_t a_count,
+                                              std::vector<StackSelection> a_stacks) :
+    form_id(a_form_id), count(a_count), stacks(std::move(a_stacks)) {}
 
 bool Hooks::InventorySelection::Install() {
     const REL::Relocation<std::uintptr_t> destructor{RE::ExtraDataList::DESTRUCTOR};
@@ -311,13 +311,7 @@ std::shared_ptr<Hooks::InventorySelection::StackWatch> Hooks::InventorySelection
 }
 
 std::optional<Hooks::InventorySelection> Hooks::InventorySelection::Capture(
-    RE::TESObjectREFR& a_source, const RE::TESBoundObject& a_item,
-    RE::ExtraDataList* a_extra_list, std::int32_t a_count) {
-    const auto a_source_handle = a_source.GetHandle();
-    if (!a_source_handle || a_count <= 0) {
-        return std::nullopt;
-    }
-
+    const RE::TESBoundObject& a_item, RE::ExtraDataList* a_extra_list, std::int32_t a_count) {
     std::vector<StackSelection> a_stacks;
     if (a_extra_list) {
         auto a_watch = WatchStack(a_extra_list);
@@ -327,7 +321,7 @@ std::optional<Hooks::InventorySelection> Hooks::InventorySelection::Capture(
         a_stacks.push_back({std::move(a_watch), a_extra_list->GetCount()});
     }
 
-    return InventorySelection(a_source_handle, a_item.GetFormID(), a_count, std::move(a_stacks));
+    return InventorySelection(a_item.GetFormID(), a_count, std::move(a_stacks));
 }
 
 std::optional<Hooks::InventorySelection> Hooks::InventorySelection::Capture(
@@ -353,7 +347,7 @@ std::optional<Hooks::InventorySelection> Hooks::InventorySelection::Capture(
         }
     }
 
-    InventorySelection selection({}, a_entry.object->GetFormID(), a_count, std::move(a_stacks));
+    InventorySelection selection(a_entry.object->GetFormID(), a_count, std::move(a_stacks));
     if (a_source) {
         const auto a_source_handle = a_source->GetHandle();
         if (!a_source_handle) {
@@ -450,19 +444,19 @@ bool Hooks::InventorySelection::HasItems(RE::TESObjectREFR& a_source, RE::TESBou
     return available >= a_count;
 }
 
-std::optional<Hooks::InventorySelection::Resolved> Hooks::InventorySelection::ResolveDrop() const {
+std::optional<Hooks::InventorySelection::Resolved> Hooks::InventorySelection::ResolveDrop(
+    RE::PlayerCharacter& a_player) const {
     const auto a_watch = stacks.empty() ? nullptr : stacks.front().watch.get();
     if (a_watch && !a_watch->live.load()) {
         return std::nullopt;
     }
 
-    auto a_source = source.get();
     const auto a_item = RE::TESForm::LookupByID<RE::TESBoundObject>(form_id);
     const auto a_list = a_watch ? a_watch->list : nullptr;
-    if (!a_source || !a_item || !HasItems(*a_source, *a_item, a_list, count, true)) {
+    if (!a_item || !HasItems(a_player, *a_item, a_list, count, true)) {
         return std::nullopt;
     }
-    return Resolved{std::move(a_source), a_item, a_list, count};
+    return Resolved{a_item, a_list, count};
 }
 
 bool Hooks::InventorySelection::ValidateSources() const {

@@ -328,22 +328,19 @@ RE::ObjectRefHandle* Hooks::InventoryActionHooks::DropObject(RE::PlayerCharacter
 
     const int delay = Manager::GetSingleton()->OnDrop(a_player, a_item);
     if (delay > 0) {
-        if (auto a_selection = InventorySelection::Capture(*a_player, *a_item, a_extra_list, a_count)) {
+        if (auto a_selection = InventorySelection::Capture(*a_item, a_extra_list, a_count)) {
             CallDelayed(delay, [selection = std::move(*a_selection)] {
-                const auto selection_now = selection.ResolveDrop();
+                const auto player = RE::PlayerCharacter::GetSingleton();
+                const auto selection_now = player ? selection.ResolveDrop(*player) : std::nullopt;
                 if (!selection_now) {
-                    return;
-                }
-                const auto a_actor = selection_now->source->As<RE::Actor>();
-                if (!a_actor) {
                     return;
                 }
                 const auto previous = std::exchange(started_animation,
                     {selection_now->item->GetFormID(), Presets::kItemDrop});
                 const SKSE::stl::scope_exit restore{[previous]() noexcept { started_animation = previous; }};
-                a_actor->DropObject(selection_now->item, selection_now->extra_list, selection_now->count);
+                player->DropObject(selection_now->item, selection_now->extra_list, selection_now->count);
                 if (RE::UI::GetSingleton()->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {
-                    RE::SendUIMessage::SendInventoryUpdateMessage(a_actor, selection_now->item);
+                    RE::SendUIMessage::SendInventoryUpdateMessage(player, selection_now->item);
                 }
             });
             return std::construct_at(std::addressof(a_result));
@@ -514,9 +511,7 @@ RE::ObjectRefHandle* Hooks::MoveItemHooks<RefType>::RemoveItem(RefType* a_this,
         }
         break;
     case RE::ITEM_REMOVE_REASON::kRemove:
-        if (!InventoryActionHooks::HasStarted(a_this, a_item, Presets::kItemRemove)) {
-            manager->OnItemRemove(a_this, a_item);
-        }
+        manager->OnItemRemove(a_this, a_item);
         break;
     default:
         break;
