@@ -5,6 +5,10 @@ set(headers ${headers}
 	include/Manager.h
 	include/Animator.h
 	include/Hooks.h
+	include/InventoryActionHooks.h
+	include/InventorySelection.h
+	include/PlayerActivationHooks.h
+	include/PlayerInteraction.h
 	include/Service.h
 	include/Presets/PresetInterface.h
 	include/Variables/AnimationIntegration.h

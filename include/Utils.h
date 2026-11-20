@@ -11,24 +11,7 @@ namespace Utils {
     };
 
     template <typename MenuType>
-    RE::StandardItemData* GetSelectedItemData() {
-        {
-            std::scoped_lock lock(menu_blocks_mutex);
-            if (const auto a_block = menu_blocks.find(MenuType::MENU_NAME); a_block != menu_blocks.end() && a_block->second) {
-                return nullptr;
-            }
-        }
-        if (const auto ui = RE::UI::GetSingleton()) {
-            if (const auto menu = ui->GetMenu<MenuType>()) {
-                if (RE::ItemList* a_itemList = menu->GetRuntimeData().itemList) {
-                    if (auto* item = a_itemList->GetSelectedItem()) {
-                        return &item->data;
-                    }
-                }
-            }
-        }
-        return nullptr;
-    }
+    RE::StandardItemData* GetSelectedItemData();
 
     RE::StandardItemData* GetSelectedItemDataInMenu(std::string& a_menuOut);
 

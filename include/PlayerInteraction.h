@@ -22,7 +22,6 @@ namespace Hooks {
 
         static RE::TESBoundObject* GetDirectActivationBase(const RE::PlayerCharacter& a_player,
                                                             RE::TESObjectREFR& a_target);
-        static std::uintptr_t GetHookedActivation(const RE::TESBoundObject& a_base);
         static bool UsesNativePickup(const RE::TESBoundObject& a_base, std::uintptr_t a_hooked_activate);
         static bool Dispatch(RE::PlayerCharacter* a_player, RE::TESObjectREFR* a_target, RE::VR_DEVICE a_device);
         static void Submit(SKSE::TaskInterface::TaskFn a_call);

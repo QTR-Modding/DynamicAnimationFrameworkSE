@@ -1,5 +1,4 @@
 #pragma once
-#include "CLibUtilsQTR/Tasker.hpp"
 
 namespace Hooks {
     void Install();
@@ -38,6 +37,7 @@ namespace Hooks {
     };
 
     inline constexpr std::size_t activate_vfunc_slot = 0x37;
+    std::uintptr_t GetHookedActivation(const RE::TESBoundObject& a_base);
 
     using ActivationForms = std::tuple<
         RE::TESObjectARMO*, RE::TESObjectWEAP*, RE::ScrollItem*, RE::AlchemyItem*, RE::IngredientItem*,
@@ -52,9 +52,7 @@ namespace Hooks {
 
     public:
         static void install();
-        static std::uintptr_t GetOriginalAddress(std::uintptr_t a_slot) {
-            return a_slot == reinterpret_cast<std::uintptr_t>(Activate_Hook) ? _Activate.address() : 0;
-        }
+        static std::uintptr_t GetOriginalAddress(std::uintptr_t a_slot);
     };
 
     // Credits: SkyrimThiago
@@ -76,16 +74,7 @@ namespace Hooks {
     template <typename RefType>
     class MoveItemHooks {
     public:
-        static void install(const bool is_actor = true) {
-            REL::Relocation<std::uintptr_t> _vtbl{RefType::VTABLE[0]};
-            if (is_actor) {
-                const auto slot = REL::Module::IsVR() ? RE::Actor::PICK_UP_OBJECT_VTABLE_SLOT_VR :
-                                                        RE::Actor::PICK_UP_OBJECT_VTABLE_SLOT_FLAT;
-                pick_up_object_ = _vtbl.write_vfunc(slot, pickUpObject);
-            }
-            remove_item_ = _vtbl.write_vfunc(0x56, RemoveItem);
-            add_object_to_container_ = _vtbl.write_vfunc(0x5A, addObjectToContainer);
-        }
+        static void install(bool is_actor = true);
 
     private:
         static void pickUpObject(RefType* a_this,

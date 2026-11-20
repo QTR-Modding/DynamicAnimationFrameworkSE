@@ -3,6 +3,10 @@ set(sources ${sources}
 	src/Utils.cpp
 	src/Manager.cpp
 	src/Hooks.cpp
+	src/InventoryActionHooks.cpp
+	src/InventorySelection.cpp
+	src/PlayerActivationHooks.cpp
+	src/PlayerInteraction.cpp
  	src/Animator.cpp
  	src/Service.cpp
  	include/Presets/PresetInterface.cpp
