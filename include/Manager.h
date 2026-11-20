@@ -48,12 +48,12 @@ public:
 
     void SetMenuQueued(std::string_view menu_name, bool for_open);
     void UnSetMenuQueued(std::string_view menu_name);
-    [[nodiscard]] bool IsMenuQueued(std::string_view menu_name) const;
     [[nodiscard]] bool IsMenuQueued(std::string_view menu_name, bool for_open) const;
     static void OpenCloseMenu(std::string_view menu_name, bool open);
 
-    int OnActivate(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
-    int OnPickup(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
+    static Presets::AnimData SelectAnimation(DAF_API::AnimEventID a_event, RE::Actor* a_actor,
+                                             RE::TESForm* a_target);
+    int PlayAnimation(AnimEventInfo a_info, Presets::AnimData a_data);
     int OnDrop(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
     int OnItemAdd(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);
     int OnItemRemove(RE::TESObjectREFR* a_actor, RE::TESForm* a_item);

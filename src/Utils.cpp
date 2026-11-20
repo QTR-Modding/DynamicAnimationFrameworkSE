@@ -18,6 +18,26 @@ namespace {
     }
 }
 
+template <typename MenuType>
+RE::StandardItemData* Utils::GetSelectedItemData() {
+    {
+        std::scoped_lock lock(menu_blocks_mutex);
+        if (const auto a_block = menu_blocks.find(MenuType::MENU_NAME); a_block != menu_blocks.end() && a_block->second) {
+            return nullptr;
+        }
+    }
+    if (const auto ui = RE::UI::GetSingleton()) {
+        if (const auto menu = ui->GetMenu<MenuType>()) {
+            if (RE::ItemList* a_itemList = menu->GetRuntimeData().itemList) {
+                if (const auto a_item = a_itemList->GetSelectedItem()) {
+                    return &a_item->data;
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+
 RE::StandardItemData* Utils::GetSelectedItemDataInMenu(std::string& a_menuOut) {
     if (const auto ui = RE::UI::GetSingleton()) {
         if (ui->IsMenuOpen(RE::InventoryMenu::MENU_NAME)) {

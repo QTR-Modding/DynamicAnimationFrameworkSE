@@ -115,36 +115,39 @@ bool Manager::PlayAnimation(RE::Actor* a_actor,
 }
 
 int Manager::PlayAnimation(AnimEventInfo a_info) {
-    if (const auto actor = a_info.a_actor->As<RE::Actor>()) {
-        if (!ActorCheck(actor)) {
-            return 0;
-        }
+    const auto a_actor = a_info.a_actor->As<RE::Actor>();
+    if (!a_actor) {
+        return 0;
+    }
+    return PlayAnimation(a_info, SelectAnimation(a_info.event_id, a_actor, a_info.a_item));
+}
 
-        if (auto anim_data = GetAnimData(a_info.event_id, {.actor_id = actor->GetFormID(), .form = a_info.a_item});
-            !anim_data.animations.empty()) {
-            const auto target_ref = a_info.a_item ? a_info.a_item->AsReference() : nullptr;
-            if (!anim_data.variables.empty()) {
-                Variables::PrepareAnimations(anim_data.animations, std::move(anim_data.variables),
-                                             anim_data.duration_indices, target_ref);
-            }
+int Manager::PlayAnimation(AnimEventInfo a_info, Presets::AnimData a_data) {
+    if (a_data.animations.empty()) {
+        return 0;
+    }
 
-            PrepareIdleAnimations(anim_data.animations, target_ref);
+    const auto a_actor = a_info.a_actor->As<RE::Actor>();
+    const auto a_target = a_info.a_item ? a_info.a_item->AsReference() : nullptr;
+    if (!a_data.variables.empty()) {
+        Variables::PrepareAnimations(a_data.animations, std::move(a_data.variables),
+                                     a_data.duration_indices, a_target);
+    }
 
-            if (PlayAnimation(actor, {a_info.event_id, std::move(anim_data.animations)})) {
-                if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
-                    if (const auto actor_id = actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
-                        // ReSharper disable once CppTooWideScopeInitStatement
-                        RE::NiPointer<RE::NiAVObject> a_model;
-                        if (const auto a_item = a_info.a_item; a_item && Utils::GetModel(a_item, a_model)) {
-                            Hooks::item_meshes[actor_id] = {a_model, attach_node};
-                        }
-                    }
-                }
-                return anim_data.delay;
+    PrepareIdleAnimations(a_data.animations, a_target);
+    if (!PlayAnimation(a_actor, {a_info.event_id, std::move(a_data.animations)})) {
+        return 0;
+    }
+
+    if (!a_data.attach_node.empty()) {
+        if (const auto a_actor_id = a_actor->GetFormID(); !Hooks::item_meshes.contains(a_actor_id)) {
+            RE::NiPointer<RE::NiAVObject> a_model;
+            if (a_info.a_item && Utils::GetModel(a_info.a_item, a_model)) {
+                Hooks::item_meshes[a_actor_id] = {a_model, a_data.attach_node};
             }
         }
     }
-    return 0;
+    return a_data.delay;
 }
 
 void Manager::SetMenuQueued(const std::string_view menu_name, const bool for_open) {
@@ -153,10 +156,6 @@ void Manager::SetMenuQueued(const std::string_view menu_name, const bool for_ope
 
 void Manager::UnSetMenuQueued(const std::string_view menu_name) {
     queued_menus.erase(menu_name);
-}
-
-bool Manager::IsMenuQueued(const std::string_view menu_name) const {
-    return queued_menus.contains(menu_name);
 }
 
 bool Manager::IsMenuQueued(const std::string_view menu_name, const bool for_open) const {
@@ -310,12 +309,10 @@ void Manager::ResumeAnimators() {
     }
 }
 
-int Manager::OnActivate(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
-    return PlayAnimation({Presets::AnimEvent::kActivate, a_actor, a_item});
-}
-
-int Manager::OnPickup(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {
-    return PlayAnimation({Presets::AnimEvent::kItemPickup, a_actor, a_item});
+Presets::AnimData Manager::SelectAnimation(DAF_API::AnimEventID a_event, RE::Actor* a_actor,
+                                          RE::TESForm* a_target) {
+    return ActorCheck(a_actor) ? GetAnimData(a_event, {.actor_id = a_actor->GetFormID(), .form = a_target}) :
+                                 Presets::AnimData{};
 }
 
 int Manager::OnDrop(RE::TESObjectREFR* a_actor, RE::TESForm* a_item) {

@@ -1,50 +1,14 @@
 #pragma once
-#include "CLibUtilsQTR/Tasker.hpp"
 
 namespace Hooks {
     void Install();
 
-    template <typename Func, typename... Args>
-    void CallOriginalMethodDelayed(int delay, RE::TESObjectREFR* AoI, Func func, Args&&... args) {
-        auto args_tuple = std::make_tuple(std::forward<Args>(args)...);
-        auto smart = RE::NiPointer(AoI);
+    inline constinit std::atomic_uint64_t delayed_call_generation{0};
 
-        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-            [smart, func, args_tuple = std::move(args_tuple)]() mutable {
-                SKSE::GetTaskInterface()->AddTask(
-                    [smart, func, args_tuple = std::move(args_tuple)]() mutable {
-                        if (!smart) {
-                            return;
-                        }
-                        std::apply([&]<typename... T0>(T0&&... unpacked) {
-                            std::invoke(func, std::forward<T0>(unpacked)...);
-                        }, std::move(args_tuple));
+    using DelayedCallDispatcher = void (*)(SKSE::TaskInterface::TaskFn);
 
-                        if (auto ui = RE::UI::GetSingleton();
-                            ui->IsMenuOpen(RE::InventoryMenu::MENU_NAME) ||
-                            ui->IsMenuOpen(RE::BarterMenu::MENU_NAME) ||
-                            ui->IsMenuOpen(RE::ContainerMenu::MENU_NAME)) {
-                            RE::SendUIMessage::SendInventoryUpdateMessage(smart.get(), nullptr);
-                        }
-                    }
-                    );
-            },
-            delay
-            );
-    }
-
-    template <typename Callable>
-    void CallLambdaDelayed(int delay, Callable&& func) {
-        auto wrapper = std::forward<Callable>(func);
-        clib_utilsQTR::Tasker::GetSingleton()->PushTask(
-            [wrapper]() mutable {
-                SKSE::GetTaskInterface()->AddTask([wrapper = std::move(wrapper)]() mutable {
-                    wrapper();
-                });
-            },
-            delay
-            );
-    }
+    void CallDelayed(int a_delay, SKSE::TaskInterface::TaskFn a_task, DelayedCallDispatcher a_dispatch = nullptr);
+    void CancelDelayedCalls();
 
     struct DrawHook {
         static void thunk(std::uint32_t a_timer);
@@ -72,6 +36,14 @@ namespace Hooks {
         static inline REL::Relocation<decltype(thunk)> func;
     };
 
+    inline constexpr std::size_t activate_vfunc_slot = 0x37;
+    std::uintptr_t GetHookedActivation(const RE::TESBoundObject& a_base);
+
+    using ActivationForms = std::tuple<
+        RE::TESObjectARMO*, RE::TESObjectWEAP*, RE::ScrollItem*, RE::AlchemyItem*, RE::IngredientItem*,
+        RE::TESObjectBOOK*, RE::TESObjectCONT*, RE::TESObjectDOOR*, RE::TESObjectSTAT*, RE::TESObjectACTI*,
+        RE::TESObjectLIGH*, RE::TESObjectTREE*, RE::BGSTalkingActivator*, RE::TESNPC*>;
+
     template <typename FormType>
     class ActivateHook : public FormType {
         static bool Activate_Hook(FormType* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef,
@@ -80,6 +52,7 @@ namespace Hooks {
 
     public:
         static void install();
+        static std::uintptr_t GetOriginalAddress(std::uintptr_t a_slot);
     };
 
     // Credits: SkyrimThiago
@@ -101,14 +74,7 @@ namespace Hooks {
     template <typename RefType>
     class MoveItemHooks {
     public:
-        static void install(const bool is_actor = true) {
-            REL::Relocation<std::uintptr_t> _vtbl{RefType::VTABLE[0]};
-            if (is_actor) {
-                pick_up_object_ = _vtbl.write_vfunc(0xCC, pickUpObject);
-            }
-            remove_item_ = _vtbl.write_vfunc(0x56, RemoveItem);
-            add_object_to_container_ = _vtbl.write_vfunc(0x5A, addObjectToContainer);
-        }
+        static void install(bool is_actor = true);
 
     private:
         static void pickUpObject(RefType* a_this,
