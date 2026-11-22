@@ -130,30 +130,24 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
 
             PrepareIdleAnimations(anim_data.animations, target_ref);
 
-            const auto pendingProp = std::make_shared<std::optional<Hooks::AttachNodeInfo>>(std::in_place);
-            auto& prop = pendingProp->value();
-            if (!anim_data.attach_node.empty() && a_info.a_item && Utils::GetModel(a_info.a_item, prop.first)) {
-                prop.second = std::move(anim_data.attach_node);
-            }
+            const auto firstStep = std::ranges::find_if(anim_data.animations, [](const Animation& animation) {
+                return animation.a_idle || !animation.anim_name.empty();
+            });
+            if (firstStep != anim_data.animations.end()) {
+                Hooks::AttachNodeInfo prop;
+                if (!anim_data.attach_node.empty() && a_info.a_item && Utils::GetModel(a_info.a_item, prop.first)) {
+                    prop.second = std::move(anim_data.attach_node);
+                }
 
-            for (auto& animation : anim_data.animations) {
-                auto beforePlay = std::move(animation.before_play);
-                animation.before_play = [beforePlay = std::move(beforePlay), pendingProp](RE::Actor* a_actor,
-                                                                                        Animation& a_animation) {
-                    if (beforePlay && !beforePlay(a_actor, a_animation)) {
-                        return false;
+                firstStep->before_play = [beforePlay = std::move(firstStep->before_play), prop = std::move(prop)](
+                                             RE::Actor* a_actor, Animation& a_animation) mutable {
+                    const auto actorID = a_actor->GetFormID();
+                    if (prop.second.empty()) {
+                        Hooks::item_meshes.erase(actorID);
+                    } else {
+                        Hooks::item_meshes.insert_or_assign(actorID, std::move(prop));
                     }
-                    if (*pendingProp) {
-                        const auto actorID = a_actor->GetFormID();
-                        auto& attachment = pendingProp->value();
-                        if (attachment.second.empty()) {
-                            Hooks::item_meshes.erase(actorID);
-                        } else {
-                            Hooks::item_meshes.insert_or_assign(actorID, std::move(attachment));
-                        }
-                        pendingProp->reset();
-                    }
-                    return true;
+                    return !beforePlay || beforePlay(a_actor, a_animation);
                 };
             }
 
