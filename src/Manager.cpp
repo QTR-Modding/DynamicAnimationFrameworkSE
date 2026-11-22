@@ -130,16 +130,34 @@ int Manager::PlayAnimation(AnimEventInfo a_info) {
 
             PrepareIdleAnimations(anim_data.animations, target_ref);
 
-            if (PlayAnimation(actor, {a_info.event_id, std::move(anim_data.animations)})) {
-                if (auto attach_node = anim_data.attach_node; !attach_node.empty()) {
-                    if (const auto actor_id = actor->GetFormID(); !Hooks::item_meshes.contains(actor_id)) {
-                        // ReSharper disable once CppTooWideScopeInitStatement
-                        RE::NiPointer<RE::NiAVObject> a_model;
-                        if (const auto a_item = a_info.a_item; a_item && Utils::GetModel(a_item, a_model)) {
-                            Hooks::item_meshes[actor_id] = {a_model, attach_node};
-                        }
+            const auto pendingProp = std::make_shared<std::optional<Hooks::AttachNodeInfo>>(std::in_place);
+            auto& prop = pendingProp->value();
+            if (!anim_data.attach_node.empty() && a_info.a_item && Utils::GetModel(a_info.a_item, prop.first)) {
+                prop.second = std::move(anim_data.attach_node);
+            }
+
+            for (auto& animation : anim_data.animations) {
+                auto beforePlay = std::move(animation.before_play);
+                animation.before_play = [beforePlay = std::move(beforePlay), pendingProp](RE::Actor* a_actor,
+                                                                                        Animation& a_animation) {
+                    if (beforePlay && !beforePlay(a_actor, a_animation)) {
+                        return false;
                     }
-                }
+                    if (*pendingProp) {
+                        const auto actorID = a_actor->GetFormID();
+                        auto& attachment = pendingProp->value();
+                        if (attachment.second.empty()) {
+                            Hooks::item_meshes.erase(actorID);
+                        } else {
+                            Hooks::item_meshes.insert_or_assign(actorID, std::move(attachment));
+                        }
+                        pendingProp->reset();
+                    }
+                    return true;
+                };
+            }
+
+            if (PlayAnimation(actor, {a_info.event_id, std::move(anim_data.animations)})) {
                 return anim_data.delay;
             }
         }
